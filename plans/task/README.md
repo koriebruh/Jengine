@@ -1,19 +1,19 @@
 # Jengine — Implementation Task Set
 
-This folder is the **build sequence** for Jengine, derived from the design in [`../plans/docs/`](../plans/docs/README.md). Each file in `core/` and `frontend/` is one implementation task, numbered in the order it should be built. An AI coding agent should be able to open a single task file and implement it correctly without re-reading the entire design doc set — task files reference the relevant design sections instead of repeating them.
+This folder is the **build sequence** for Jengine, derived from the design in [`../docs/`](../docs/README.md). Each file in `core/` and `frontend/` is one implementation task, numbered in the order it should be built. An AI coding agent should be able to open a single task file and implement it correctly without re-reading the entire design doc set — task files reference the relevant design sections instead of repeating them.
 
 **Read [`OPERATING_INSTRUCTIONS.md`](OPERATING_INSTRUCTIONS.md) before starting any task.** It's the process contract — how to verify prerequisites are really done, how to handle cross-task conflicts, how Definition of Done gets verified (not asserted), and the `QA_REPORT.md` convention. This README describes *what's in the folder*; that file describes *how to move through it safely*.
 
 ## Why two folders
 
-- **`core/`** — everything with no UI: infra, schema, domain models, ingestion, matching engine, case workflow, API layer, security, observability. This is built first because the frontend is a client of this layer's API contract (see [`../plans/docs/14-dashboard-frontend.md`](../plans/docs/14-dashboard-frontend.md), which explicitly says the frontend is built last).
+- **`core/`** — everything with no UI: infra, schema, domain models, ingestion, matching engine, case workflow, API layer, security, observability. This is built first because the frontend is a client of this layer's API contract (see [`../docs/14-dashboard-frontend.md`](../docs/14-dashboard-frontend.md), which explicitly says the frontend is built last).
 - **`frontend/`** — the Next.js dashboard. Each frontend task depends on specific core tasks being done (stated in its Prerequisites section) because it consumes their API/data contracts.
 
 ## Build order
 
 Tasks are numbered for sequential execution within each folder. `core/` and `frontend/` are not fully sequential relative to each other — frontend task 01 (bootstrap) can start once `core/06` (ingestion framework) and `core/15` (REST API MVP) exist; each frontend task states its actual core prerequisite explicitly rather than assuming "all of core is done first."
 
-Tasks numbered 18+ in `core/` and 08+ in `frontend/` are **V1-phase** work (see [`../plans/docs/11-scalability-roadmap.md`](../plans/docs/11-scalability-roadmap.md) §12.2) — do not start these until the MVP tasks (core 01–17, frontend 01–07) pass [`MVP_ACCEPTANCE_GATE.md`](MVP_ACCEPTANCE_GATE.md), which proves the tasks work wired together end-to-end, not just individually. `core/26-v2-backlog-notes.md` is a short pointer file, not a buildable task — it exists so V2 ideas aren't lost, not so they get built early.
+Tasks numbered 18+ in `core/` and 08+ in `frontend/` are **V1-phase** work (see [`../docs/11-scalability-roadmap.md`](../docs/11-scalability-roadmap.md) §12.2) — do not start these until the MVP tasks (core 01–17, frontend 01–07) pass [`MVP_ACCEPTANCE_GATE.md`](MVP_ACCEPTANCE_GATE.md), which proves the tasks work wired together end-to-end, not just individually. `core/26-v2-backlog-notes.md` is a short pointer file, not a buildable task — it exists so V2 ideas aren't lost, not so they get built early.
 
 ## Task file format
 
@@ -30,7 +30,7 @@ Every task file follows the same structure so an agent always knows where to loo
 
 ## Definition of Done — no checklist clutter
 
-A task is done when its stated tests pass (unit, integration, or golden-dataset per [`../plans/docs/16-development-workflow.md`](../plans/docs/16-development-workflow.md) §16.4) and, where relevant, a manual verification step succeeds. **Tests are the completion record — not a markdown checklist.**
+A task is done when its stated tests pass (unit, integration, or golden-dataset per [`../docs/16-development-workflow.md`](../docs/16-development-workflow.md) §16.4) and, where relevant, a manual verification step succeeds. **Tests are the completion record — not a markdown checklist.**
 
 If manual/exploratory QA turns up issues while working a task:
 - Track them in a single root-level `QA_REPORT.md` (create it if it doesn't exist) — it holds only *currently open* issues, nothing else.

@@ -51,7 +51,7 @@ None. This is the first task in the build sequence.
   )
 
   func main() {
-      fmt.Println("coreapi: not yet implemented (see task/core/*)")
+      fmt.Println("coreapi: not yet implemented (see plans/task/core/*)")
       os.Exit(0)
   }
   ```

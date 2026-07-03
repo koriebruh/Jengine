@@ -4,7 +4,7 @@ This is not a build task — it's the checkpoint referenced by [`OPERATING_INSTR
 
 Every task 01–17 (core) and 01–07 (frontend) has its own Definition of Done, verified in isolation (unit tests, integration tests against its own scope). None of them, individually or summed, prove that **the whole system wired together actually reconciles a transaction** — that gap is exactly how a build can look "done" task-by-task while the real product doesn't work. This file closes that gap.
 
-Do not start any V1 task until every check below passes for real, against the real docker-compose dev stack (`task/core/02`), not mocked.
+Do not start any V1 task until every check below passes for real, against the real docker-compose dev stack (`plans/task/core/02`), not mocked.
 
 ## Why this exists (concrete failure mode it prevents)
 

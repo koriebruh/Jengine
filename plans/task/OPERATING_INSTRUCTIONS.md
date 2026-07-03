@@ -6,7 +6,7 @@ Read this file once before starting any task. Read it again if you're resuming a
 
 ## 1. Before starting any task
 
-1. Read `task/README.md` — build order, MVP-vs-V1 phase boundary, why `core/` comes before `frontend/`.
+1. Read `plans/task/README.md` — build order, MVP-vs-V1 phase boundary, why `core/` comes before `frontend/`.
 2. Open the specific task file. Read it in full — Goal, Prerequisites, Scope/Deliverables, Design Reference, Implementation Notes, Non-Goals/Guardrails, Definition of Done, Common Pitfalls. Do not skim past Non-Goals — it's the main defense against scope creep.
 3. **Verify Prerequisites are actually satisfied in this repo right now — not just "the task number is lower."** Concretely: locate the prerequisite task's Definition of Done and confirm its tests currently pass / its artifacts exist. A lower task number that was never finished, or was finished differently than specced, is not a satisfied prerequisite. If a prerequisite is unmet or ambiguous, stop and fix/flag that first — don't build on top of an assumption.
 4. If the task's Design Reference points at a `plans/docs/*.md` section and something in the task is unclear, read that section before improvising. Task files intentionally don't repeat design rationale — it's one link away, not a guess.

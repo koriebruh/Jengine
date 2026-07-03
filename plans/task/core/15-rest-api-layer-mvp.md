@@ -1,7 +1,7 @@
 # Task 15: REST API Layer (MVP)
 
 ## Goal
-Build the MVP public API surface: the essential CRUD and action endpoints needed to exercise the full MVP flow end-to-end — accounts, statements (read), transactions (read), match rules (author/activate, minimal), match review actions (confirm/reject suggested matches), and breaks/cases (assign/comment/transition, calling into task 13's `LifecycleService`). Every mutating endpoint supports the `Idempotency-Key` header from day one. This is the layer the MVP frontend (`task/frontend/`) and any early API-integrating design partner will actually call.
+Build the MVP public API surface: the essential CRUD and action endpoints needed to exercise the full MVP flow end-to-end — accounts, statements (read), transactions (read), match rules (author/activate, minimal), match review actions (confirm/reject suggested matches), and breaks/cases (assign/comment/transition, calling into task 13's `LifecycleService`). Every mutating endpoint supports the `Idempotency-Key` header from day one. This is the layer the MVP frontend (`plans/task/frontend/`) and any early API-integrating design partner will actually call.
 
 ## Prerequisites
 - Task 03 (database schema and migrations), Task 04 (tenancy context and routing), Task 05 (canonical domain models and repositories) — this layer is a thin handler layer over existing repositories and tenancy context, not a new data layer.
@@ -25,7 +25,7 @@ Build the MVP public API surface: the essential CRUD and action endpoints needed
 - `plans/docs/16-development-workflow.md` §16.5 CI pipeline stage 3 (`buf breaking`) is listed unconditionally, not gated behind a V1 flag.
 - Connect-RPC (bufbuild/connect-go) serves gRPC, gRPC-Web, **and plain-JSON-over-HTTP from one `.proto`-defined implementation** — so building the MVP's "basic REST API" via Connect-RPC *is* building a REST API from a client's point of view (plain JSON over HTTP, no gRPC client required), while avoiding a second hand-rolled REST codepath that would need to be kept in sync with the proto contract later.
 
-**Resolution: build MVP endpoints contract-first via `.proto` + Connect-RPC from day one.** What §12.2 Phase 0 actually defers is *feature scope* — no webhook delivery system (task 21, V1), no GraphQL reporting gateway (V2, `plans/docs/11-scalability-roadmap.md` §12.2 Phase 2) — not the underlying contract technology. This is a deliberate call flagged in this task's final report for reconciliation against other parallel tasks' assumptions (particularly the frontend's API-client-codegen task, `task/frontend/02`, which should generate its TypeScript client from these same `.proto` files rather than hand-typing a REST client).
+**Resolution: build MVP endpoints contract-first via `.proto` + Connect-RPC from day one.** What §12.2 Phase 0 actually defers is *feature scope* — no webhook delivery system (task 21, V1), no GraphQL reporting gateway (V2, `plans/docs/11-scalability-roadmap.md` §12.2 Phase 2) — not the underlying contract technology. This is a deliberate call flagged in this task's final report for reconciliation against other parallel tasks' assumptions (particularly the frontend's API-client-codegen task, `plans/task/frontend/02`, which should generate its TypeScript client from these same `.proto` files rather than hand-typing a REST client).
 
 Further references:
 - `plans/docs/07-api-extensibility.md` §8.1 — resource-oriented REST conventions (`/v1/tenants/{id}/accounts`), pagination via `page_token`, `Idempotency-Key` header requirement, versioning via URL path.
@@ -71,7 +71,7 @@ Resolve `tenant_id` from a JWT claim or API key exactly per `plans/docs/01-multi
 - No Connector SDK / WASM plugin surface (`plans/docs/07-api-extensibility.md` §8.3) — task 25, V1.
 - No OIDC/SAML SSO, no OPA/ABAC policy evaluation, no scoped API-key management UI — task 23, V1. MVP auth is a coarse JWT/API-key → tenant + role resolution only.
 - No backtesting-sandbox endpoint for rules (would require re-running historical data read-only — a larger feature not in the 10-17 task range; note as a known gap).
-- No frontend TypeScript client generation — that's `task/frontend/02`'s job, consuming the `.proto` files this task produces via `buf generate`.
+- No frontend TypeScript client generation — that's `plans/task/frontend/02`'s job, consuming the `.proto` files this task produces via `buf generate`.
 - Do not hand-roll a second, parallel plain-`net/http` REST implementation alongside the Connect-RPC one "to be safe" — Connect-RPC already serves REST/JSON; a second implementation is duplicated surface that will drift.
 
 ## Definition of Done

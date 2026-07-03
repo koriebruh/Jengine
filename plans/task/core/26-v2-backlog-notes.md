@@ -1,6 +1,6 @@
 # Task 26: V2 Backlog Notes
 
-**This is not a buildable task.** It is a pointer-only list of Phase 2 (V2) ideas from the design doc set, kept here so they aren't lost — not so they get started before the V1 tasks (18–25) are working end-to-end and verified. Do not implement anything in this file. Each item below is one line plus a doc pointer; if you're an implementing agent and you've landed here looking for something to build, stop and check `task/README.md` for the actual current task instead.
+**This is not a buildable task.** It is a pointer-only list of Phase 2 (V2) ideas from the design doc set, kept here so they aren't lost — not so they get started before the V1 tasks (18–25) are working end-to-end and verified. Do not implement anything in this file. Each item below is one line plus a doc pointer; if you're an implementing agent and you've landed here looking for something to build, stop and check `plans/task/README.md` for the actual current task instead.
 
 - **ML-based match scoring with feedback loop** — gradient-boosted scoring model trained on historical analyst match/reject decisions. `plans/docs/04-matching-engine.md` §5.3.
 - **Rule backtesting sandbox refinement** — the sandbox itself ships in V1 (frontend task 08); V2 is deepening/refining it. `plans/docs/11-scalability-roadmap.md` §12.2 Phase 2.
