@@ -1,6 +1,7 @@
 .PHONY: build test lint vet fmt tidy clean lint-tenancy \
 	dev-up dev-down dev-down-volumes dev-logs migrate seed \
-	test-unit test-integration test-golden ci
+	test-unit test-integration test-golden ci \
+	web-dev web-build web-lint
 
 # --- Task 01: core build/lint/test automation ---------------------------
 
@@ -79,3 +80,14 @@ test-golden:
 # Local equivalent of the CI pipeline stages in plans/docs/16-development-workflow.md §16.5.
 ci: vet lint test build
 	scripts/check-migration-safety.sh
+
+# --- Task 01 (frontend): web/ Next.js app - single `make` entrypoint ------
+
+web-dev: ## Boots the Next.js dev server (plans/task/frontend/01).
+	cd web && npm run dev
+
+web-build: ## Production build, zero TypeScript errors required.
+	cd web && npm run build
+
+web-lint: ## ESLint check.
+	cd web && npm run lint
