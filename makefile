@@ -1,4 +1,4 @@
-.PHONY: build test lint vet fmt tidy clean \
+.PHONY: build test lint vet fmt tidy clean lint-tenancy \
 	dev-up dev-down dev-down-volumes dev-logs migrate seed \
 	test-unit test-integration test-golden ci
 
@@ -10,9 +10,16 @@ build: ## Build every cmd/* binary; fails fast on any compile error.
 vet:
 	go vet ./...
 
-lint: vet
+lint: vet lint-tenancy
 	golangci-lint run ./...
-	scripts/lint/check_tenant_id.sh
+
+# Task 04: real go/analysis-based checker, superseding task 01's grep
+# script (plans/task/core/04 Implementation Notes) now that a real
+# repository-layer convention exists. Scope is the invocation's package
+# list, not hardcoded in the analyzer - expand this as task 05+ add more
+# repository packages.
+lint-tenancy:
+	go run ./internal/platform/lint/tenantcheck/cmd/tenantcheck ./internal/storage/postgres/...
 
 test:
 	go test -race ./...

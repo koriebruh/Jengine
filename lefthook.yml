@@ -18,9 +18,9 @@ pre-commit:
       glob: "*.go"
       run: golangci-lint run ./...
 
-    - name: tenant-id check
+    - name: tenancy lint
       glob: "internal/storage/postgres/*.go"
-      run: scripts/lint/check_tenant_id.sh
+      run: go run ./internal/platform/lint/tenantcheck/cmd/tenantcheck ./internal/storage/postgres/...
 
 pre-push:
   jobs:
