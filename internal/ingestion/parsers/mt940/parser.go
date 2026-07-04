@@ -30,19 +30,19 @@ type Balance struct {
 // carried over from the statement's opening balance so the exact
 // cross-task field contract still holds for every transaction line.
 type Field61 struct {
-	ValueDate       string // YYMMDD
-	EntryDate       string // MMDD, optional
-	DebitCreditMark string // "D", "C", "RD", "RC" - surfaced raw, sign application is task 08's job
-	Amount          string // raw digits with comma decimal separator
-	Currency        string // carried over from the statement's balance currency
-	TransactionType string // e.g. "NMSC", "NTRF" - optional
-	CustomerRef     string
-	BankRef         string // after "//", optional
+	ValueDate       string `json:"value_date"`        // YYMMDD
+	EntryDate       string `json:"entry_date"`        // MMDD, optional
+	DebitCreditMark string `json:"debit_credit_mark"` // "D", "C", "RD", "RC" - surfaced raw, sign application is task 08's job
+	Amount          string `json:"amount"`            // raw digits with comma decimal separator
+	Currency        string `json:"currency"`          // carried over from the statement's balance currency
+	TransactionType string `json:"transaction_type"`  // e.g. "NMSC", "NTRF" - optional
+	CustomerRef     string `json:"customer_ref"`
+	BankRef         string `json:"bank_ref"` // after "//", optional
 }
 
 // Field86 mirrors one :86: information block.
 type Field86 struct {
-	Narrative string
+	Narrative string `json:"narrative"`
 }
 
 // TransactionLine pairs one :61: line with its following :86: narrative

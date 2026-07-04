@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,8 +28,8 @@ import (
 	"github.com/koriebruh/Jengine/internal/ingestion/connector/sftp"
 	"github.com/koriebruh/Jengine/internal/ingestion/connector/testconnector"
 	"github.com/koriebruh/Jengine/internal/ingestion/kafka"
+	"github.com/koriebruh/Jengine/internal/ingestion/mapping"
 	"github.com/koriebruh/Jengine/internal/ingestion/objectstore"
-	"github.com/koriebruh/Jengine/internal/ingestion/parsers/mt940"
 	"github.com/koriebruh/Jengine/internal/ingestion/pipeline"
 	"github.com/koriebruh/Jengine/internal/storage/postgres"
 	"github.com/koriebruh/Jengine/internal/tenancy"
@@ -61,14 +60,21 @@ func envOrDefault(key, def string) string {
 	return def
 }
 
+// newTxRunner builds a closure wrapping postgres.WithTx, satisfying every
+// package-local TxRunner type in this codebase (csvupload.TxRunner,
+// sftp.TxRunner, mapping.TxRunner) - they all share the same underlying
+// function signature, so one closure works for all of them.
+func newTxRunner(pool *pgxpool.Pool) func(ctx context.Context, tenantID uuid.UUID, fn func(ctx context.Context) error) error {
+	return func(ctx context.Context, tenantID uuid.UUID, fn func(ctx context.Context) error) error {
+		return postgres.WithTx(tenancy.WithTenant(ctx, tenancy.TenantContext{TenantID: tenantID}), pool, tenantID, fn)
+	}
+}
+
 // newRegistry registers every plans/task/core/07 connector type -
 // callers construct instances via registry.New("csv"|"sftp_mt940", cfg).
 func newRegistry(pool *pgxpool.Pool, statements *postgres.StatementRepo, secrets sftp.SecretResolver, store csvupload.ObjectStore) *connector.Registry {
 	reg := connector.NewRegistry()
-
-	txRunner := func(ctx context.Context, tenantID uuid.UUID, fn func(ctx context.Context) error) error {
-		return postgres.WithTx(tenancy.WithTenant(ctx, tenancy.TenantContext{TenantID: tenantID}), pool, tenantID, fn)
-	}
+	txRunner := newTxRunner(pool)
 
 	_ = reg.Register("csv", func(cfg connector.ConnectorConfig) (connector.SourceConnector, error) {
 		return csvupload.New(store, statements, txRunner), nil
@@ -121,54 +127,45 @@ func (s passthroughStage) Process(ctx context.Context, rec *pipeline.PipelineRec
 	return pipeline.StageContinue, nil
 }
 
-// mt940RecordPayload mirrors the JSON shape internal/ingestion/connector/sftp
-// emits per record: {"field_61": mt940.Field61, "field_86": mt940.Field86}.
-type mt940RecordPayload struct {
-	Field61 mt940.Field61 `json:"field_61"`
-	Field86 mt940.Field86 `json:"field_86"`
+// formatParseStage implements pipeline stage 2 (Format Parse) for
+// connectors whose Payload is already structured JSON (per-record, e.g.
+// internal/ingestion/connector/sftp's {"field_61": ..., "field_86": ...}
+// - the real MT940 field-tag parsing already happened inside the
+// connector's Fetch, task 07's job; this stage is just the trivial
+// JSON-to-map bridge plans/task/core/08's MappingEngine needs for its
+// ParsedFields input.
+type formatParseStage struct{}
+
+func (formatParseStage) Name() string { return "format_parse" }
+func (formatParseStage) Process(ctx context.Context, rec *pipeline.PipelineRecord) (pipeline.StageResult, error) {
+	if err := json.Unmarshal(rec.Raw.Payload, &rec.ParsedFields); err != nil {
+		return pipeline.StageQuarantine, fmt.Errorf("format_parse: %w", err)
+	}
+	return pipeline.StageContinue, nil
 }
 
-// mt940PersistFn is the minimal stand-in mapping plans/task/core/06's own
-// DoD anticipated ("use a minimal internal test mapping if needed") since
-// plans/task/core/08's real mapping DSL doesn't exist yet - it does just
-// enough of field_61/field_86 -> domain.Transaction to prove the SFTP+
-// MT940 path produces correct rows end to end, per plans/task/core/07's
-// own Definition of Done.
-func mt940PersistFn(txRepo *postgres.TransactionRepo, tenantID, accountID uuid.UUID) postgres.PersistFunc {
+// canonicalizePersistFn implements stage 7 (Canonicalization) inline with
+// stage 8 (Persist+Emit): builds a domain.Transaction directly from
+// rec.Normalized (plans/task/core/08's NormalizationStage output),
+// exactly the "shaped closely enough" handoff plans/task/core/08's own
+// Implementation Notes describe.
+func canonicalizePersistFn(txRepo *postgres.TransactionRepo, tenantID, accountID uuid.UUID) postgres.PersistFunc {
 	return func(ctx context.Context, rec *pipeline.PipelineRecord) (string, string, []byte, error) {
-		var p mt940RecordPayload
-		if err := json.Unmarshal(rec.Raw.Payload, &p); err != nil {
-			return "", "", nil, fmt.Errorf("unmarshal mt940 payload: %w", err)
-		}
-
-		amount, err := decimal.NewFromString(strings.Replace(p.Field61.Amount, ",", ".", 1))
-		if err != nil {
-			return "", "", nil, fmt.Errorf("parse amount %q: %w", p.Field61.Amount, err)
-		}
-
-		side := domain.TransactionSideCredit
-		if strings.HasPrefix(p.Field61.DebitCreditMark, "D") {
-			side = domain.TransactionSideDebit
-		}
-
-		valueDate, err := time.Parse("060102", p.Field61.ValueDate)
-		if err != nil {
-			return "", "", nil, fmt.Errorf("parse value_date %q: %w", p.Field61.ValueDate, err)
-		}
-
+		n := rec.Normalized
 		tx, err := txRepo.Create(ctx, tenantID, domain.Transaction{
 			AccountID:               accountID,
 			StatementID:             &rec.Raw.BatchID,
-			ExternalRef:             p.Field61.CustomerRef,
-			Amount:                  amount,
-			Currency:                p.Field61.Currency,
-			BaseAmount:              amount,
-			ValueDate:               valueDate,
-			BookingDate:             valueDate,
-			Description:             p.Field86.Narrative,
-			Side:                    side,
+			ExternalRef:             n.ExternalRef,
+			Amount:                  n.Amount,
+			Currency:                n.Currency,
+			BaseAmount:              n.BaseAmount,
+			FXRateToBase:            &n.FXRateToBase,
+			ValueDate:               n.ValueDate,
+			BookingDate:             n.BookingDate,
+			Description:             n.Description,
+			Side:                    n.Side,
 			SourceMode:              domain.SourceModeBatch,
-			IngestionIdempotencyKey: rec.Raw.BatchID.String() + "-" + p.Field61.CustomerRef,
+			IngestionIdempotencyKey: rec.Raw.BatchID.String() + "-" + n.ExternalRef,
 			Status:                  domain.TransactionStatusUnmatched,
 		})
 		if err != nil {
@@ -219,6 +216,9 @@ func runSFTPMT940Seed() error {
 
 	statementRepo := postgres.NewStatementRepo()
 	txRepo := postgres.NewTransactionRepo()
+	accountRepo := postgres.NewAccountRepo()
+	fxRateRepo := postgres.NewFXRateRepo()
+	mappingSpecRepo := postgres.NewMappingSpecRepo()
 	outboxRepo := postgres.NewOutboxRepo(superuserPool)
 
 	connectorID := uuid.New()
@@ -227,6 +227,24 @@ func runSFTPMT940Seed() error {
 		connectorID, tenantID,
 	); err != nil {
 		return fmt.Errorf("seed connector: %w", err)
+	}
+
+	// Seed the real mt940_default.yaml mapping spec (plans/task/core/08),
+	// compiled to JSON for the mapping_specs.spec jsonb column - not the
+	// stub/ad-hoc parsing task 07's own seed flow used before this task.
+	mt940Spec, err := mapping.ParseSpecYAML(mapping.MT940DefaultSpecYAML)
+	if err != nil {
+		return fmt.Errorf("parse mt940 default mapping spec: %w", err)
+	}
+	mt940SpecJSON, err := json.Marshal(mt940Spec)
+	if err != nil {
+		return fmt.Errorf("marshal mt940 default mapping spec: %w", err)
+	}
+	if _, err := superuserPool.Exec(ctx,
+		`INSERT INTO mapping_specs (tenant_id, source_format, version, status, spec) VALUES ($1, 'MT940', 1, 'ACTIVE', $2)`,
+		tenantID, mt940SpecJSON,
+	); err != nil {
+		return fmt.Errorf("seed mapping spec: %w", err)
 	}
 
 	cfg := connector.ConnectorConfig{
@@ -258,15 +276,22 @@ func runSFTPMT940Seed() error {
 
 	pl := &pipeline.Pipeline{
 		Stages: []pipeline.Stage{
-			passthroughStage{"field_mapping"},
-			passthroughStage{"normalization"},
+			formatParseStage{},
+			mapping.NewEngine(mappingSpecRepo, newTxRunner(appPool)),
+			&mapping.NormalizationStage{
+				TenantID: tenantID, AccountID: accountID,
+				Accounts: accountRepo, FXRates: fxRateRepo,
+				TxRunner: newTxRunner(appPool),
+			},
 			passthroughStage{"validation"},
 			passthroughStage{"dedup"},
-			passthroughStage{"canonicalization"},
 			&postgres.PersistEmitStage{
 				Pool: appPool, TenantID: tenantID, Outbox: outboxRepo,
-				Persist: mt940PersistFn(txRepo, tenantID, accountID),
+				Persist: canonicalizePersistFn(txRepo, tenantID, accountID),
 			},
+		},
+		OnRecordProcessed: func(o pipeline.RecordOutcome) {
+			log.Printf("seed: record outcome: quarantined=%v dropped=%v stages=%v err=%v", o.Quarantined, o.Dropped, o.StageOrder, o.Err)
 		},
 	}
 
@@ -276,10 +301,15 @@ func runSFTPMT940Seed() error {
 	}
 
 	var txCount int
-	if err := superuserPool.QueryRow(ctx, `SELECT count(*) FROM transactions WHERE account_id = $1`, accountID).Scan(&txCount); err != nil {
+	var sampleAmount, sampleCurrency string
+	if err := superuserPool.QueryRow(ctx,
+		`SELECT count(*), max(amount::text), max(currency) FROM transactions WHERE account_id = $1`,
+		accountID,
+	).Scan(&txCount, &sampleAmount, &sampleCurrency); err != nil {
 		return fmt.Errorf("count transactions: %w", err)
 	}
-	log.Printf("seed: tenant=%s account=%s - %d transaction row(s) persisted from SFTP+MT940 sample file", tenantID, accountID, txCount)
+	log.Printf("seed: tenant=%s account=%s - %d transaction row(s) persisted from SFTP+MT940 sample file (mapped+normalized via plans/task/core/08, e.g. amount=%s currency=%s)",
+		tenantID, accountID, txCount, sampleAmount, sampleCurrency)
 	if txCount == 0 {
 		return fmt.Errorf("seed produced 0 transaction rows - check the sftp service is up (docker compose up -d sftp) and scripts/seed-data/incoming/sample.sta is mounted")
 	}
@@ -332,6 +362,9 @@ func runPollDemo() error {
 
 	statementRepo := postgres.NewStatementRepo()
 	txRepo := postgres.NewTransactionRepo()
+	accountRepo := postgres.NewAccountRepo()
+	fxRateRepo := postgres.NewFXRateRepo()
+	mappingSpecRepo := postgres.NewMappingSpecRepo()
 	outboxRepo := postgres.NewOutboxRepo(superuserPool)
 
 	store, err := objectstore.NewMinIOStore(minioEndpoint, minioAccessKey, minioSecretKey, false)
@@ -346,6 +379,21 @@ func runPollDemo() error {
 		connectorID, tenantID,
 	); err != nil {
 		return fmt.Errorf("seed connector: %w", err)
+	}
+
+	mt940Spec, err := mapping.ParseSpecYAML(mapping.MT940DefaultSpecYAML)
+	if err != nil {
+		return fmt.Errorf("parse mt940 default mapping spec: %w", err)
+	}
+	mt940SpecJSON, err := json.Marshal(mt940Spec)
+	if err != nil {
+		return fmt.Errorf("marshal mt940 default mapping spec: %w", err)
+	}
+	if _, err := superuserPool.Exec(ctx,
+		`INSERT INTO mapping_specs (tenant_id, source_format, version, status, spec) VALUES ($1, 'MT940', 1, 'ACTIVE', $2)`,
+		tenantID, mt940SpecJSON,
+	); err != nil {
+		return fmt.Errorf("seed mapping spec: %w", err)
 	}
 
 	cfg := connector.ConnectorConfig{
@@ -363,14 +411,18 @@ func runPollDemo() error {
 
 	pl := &pipeline.Pipeline{
 		Stages: []pipeline.Stage{
-			passthroughStage{"field_mapping"},
-			passthroughStage{"normalization"},
+			formatParseStage{},
+			mapping.NewEngine(mappingSpecRepo, newTxRunner(appPool)),
+			&mapping.NormalizationStage{
+				TenantID: tenantID, AccountID: accountID,
+				Accounts: accountRepo, FXRates: fxRateRepo,
+				TxRunner: newTxRunner(appPool),
+			},
 			passthroughStage{"validation"},
 			passthroughStage{"dedup"},
-			passthroughStage{"canonicalization"},
 			&postgres.PersistEmitStage{
 				Pool: appPool, TenantID: tenantID, Outbox: outboxRepo,
-				Persist: mt940PersistFn(txRepo, tenantID, accountID),
+				Persist: canonicalizePersistFn(txRepo, tenantID, accountID),
 			},
 		},
 	}

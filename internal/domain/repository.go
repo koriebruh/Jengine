@@ -90,3 +90,20 @@ type ConnectorRepository interface {
 	ListByTenant(ctx context.Context, tenantID uuid.UUID) ([]Connector, error)
 	UpdateCursorState(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, cursorState []byte, lastRunAt time.Time) error
 }
+
+// MappingSpecRepository stores versioned, tenant-configurable field-
+// mapping DSL specs (plans/task/core/08).
+type MappingSpecRepository interface {
+	Create(ctx context.Context, tenantID uuid.UUID, m MappingSpec) (MappingSpec, error)
+	// GetActive returns the ACTIVE spec for a tenant+source_format, if any.
+	GetActive(ctx context.Context, tenantID uuid.UUID, sourceFormat string) (MappingSpec, error)
+	UpdateStatus(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, status MappingSpecStatus) error
+}
+
+// FXRateRepository looks up the static rate-table entries
+// plans/task/core/08's normalization stage uses for base-currency
+// conversion.
+type FXRateRepository interface {
+	Upsert(ctx context.Context, tenantID uuid.UUID, r FXRate) (FXRate, error)
+	Get(ctx context.Context, tenantID uuid.UUID, fromCurrency, toCurrency string) (FXRate, error)
+}

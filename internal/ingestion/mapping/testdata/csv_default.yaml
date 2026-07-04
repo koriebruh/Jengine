@@ -1,0 +1,15 @@
+source_format: CSV
+version: 1
+mappings:
+  - target: transaction.amount
+    source: amount
+    transform: [parse_decimal]
+  - target: transaction.currency
+    source: currency
+    transform: [uppercase, iso4217_validate]
+  - target: transaction.value_date
+    source: value_date
+    transform: [parse_date("YYYY-MM-DD")]
+  - target: transaction.description
+    source: description
+    transform: [trim]

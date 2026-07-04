@@ -1,0 +1,15 @@
+source_format: MT940
+version: 1
+mappings:
+  - target: transaction.amount
+    source: field_61.amount
+    transform: [parse_decimal, apply_sign_from(field_61.debit_credit_mark)]
+  - target: transaction.currency
+    source: field_61.currency
+    transform: [uppercase, iso4217_validate]
+  - target: transaction.value_date
+    source: field_61.value_date
+    transform: [parse_date("YYMMDD")]
+  - target: transaction.reference
+    source: field_86.narrative
+    transform: [extract_regex("REF:(\S+)")]

@@ -2,15 +2,31 @@ package pipeline
 
 import (
 	"context"
+	"time"
 
+	"github.com/shopspring/decimal"
+
+	"github.com/koriebruh/Jengine/internal/domain"
 	"github.com/koriebruh/Jengine/internal/ingestion/connector"
 )
 
-// NormalizedFields is a placeholder shape for post-normalization data.
-// Task 08 defines the real typed struct once the field-mapping DSL's
-// output shape is known (plans/task/core/06 Implementation Notes) - this
-// exists so PipelineRecord has something concrete before then.
-type NormalizedFields map[string]any
+// NormalizedFields is the typed output of stage 4 (Normalization,
+// plans/task/core/08) - shaped closely enough to domain.Transaction that
+// the Canonicalization stage (stage 7) can construct one directly from
+// it. Replaces the map[string]any placeholder plans/task/core/06 left
+// here pending this task.
+type NormalizedFields struct {
+	Amount          decimal.Decimal
+	Currency        string
+	BaseAmount      decimal.Decimal
+	FXRateToBase    decimal.Decimal
+	ValueDate       time.Time
+	BookingDate     time.Time
+	Description     string
+	ExternalRef     string
+	CounterpartyRef string
+	Side            domain.TransactionSide
+}
 
 // StageError is a non-fatal issue accumulated on a PipelineRecord as it
 // moves through stages - a fatal error short-circuits to quarantine

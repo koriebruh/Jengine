@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS fx_rates;
+DROP TABLE IF EXISTS mapping_specs;
