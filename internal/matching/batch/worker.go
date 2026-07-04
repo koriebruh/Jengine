@@ -17,13 +17,19 @@ import (
 // unbounded pool.
 const DefaultWorkerFactor = 4
 
-// NewRiverClient builds a River client with PartitionWorker registered
-// and a bounded worker pool - running N processes of this client against
-// the same Postgres-backed job queue is safe (River's job claiming is
+// NewRiverClient builds a River client with worker registered and a
+// bounded worker pool - running N processes of this client against the
+// same Postgres-backed job queue is safe (River's job claiming is
 // itself the concurrency-safety mechanism), which is what makes adding
 // KEDA-style autoscaling later an infra change, not a redesign
 // (plans/task/core/12 Goal).
-func NewRiverClient(pool *pgxpool.Pool, worker *PartitionWorker, factor int) (*river.Client[pgx.Tx], error) {
+//
+// worker takes the river.Worker[PartitionJobArgs] interface, not the
+// concrete *PartitionWorker type, so plans/task/core/16's observability
+// wiring (cmd/matching-batch/main.go) can register an instrumented
+// wrapper around the real PartitionWorker without this package needing
+// to import internal/platform/observability itself.
+func NewRiverClient(pool *pgxpool.Pool, worker river.Worker[PartitionJobArgs], factor int) (*river.Client[pgx.Tx], error) {
 	if factor <= 0 {
 		factor = DefaultWorkerFactor
 	}

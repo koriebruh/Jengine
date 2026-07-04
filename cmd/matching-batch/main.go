@@ -14,16 +14,20 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
+	"go.opentelemetry.io/otel"
 
 	"github.com/koriebruh/Jengine/internal/audit"
 	"github.com/koriebruh/Jengine/internal/cases"
 	"github.com/koriebruh/Jengine/internal/matching/batch"
 	"github.com/koriebruh/Jengine/internal/matching/rules"
+	"github.com/koriebruh/Jengine/internal/platform/observability"
 	"github.com/koriebruh/Jengine/internal/storage/postgres"
 	"github.com/koriebruh/Jengine/internal/tenancy"
 )
@@ -32,16 +36,67 @@ func main() {
 	demo := flag.String("demo", "seed", "which mode to run: \"seed\" (default; manual-verification flow: seed data, run one batch pass, report outcomes) or \"serve\" (start a long-lived worker pool on a schedule tick, blocks)")
 	flag.Parse()
 
-	var err error
+	ctx := context.Background()
+	obsCfg := observability.Config{
+		ServiceName: "matching-batch", ServiceVersion: "dev", Environment: envOrDefault("ENVIRONMENT", "dev"),
+		OTLPEndpoint: envOrDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4318"),
+		MetricsAddr:  envOrDefault("METRICS_ADDR", ":9092"),
+	}
+	slog.SetDefault(observability.NewLogger(obsCfg))
+
+	shutdownTracer, err := observability.InitTracerProvider(ctx, obsCfg)
+	if err != nil {
+		log.Fatalf("matching-batch: init tracer provider: %v", err)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = shutdownTracer(shutdownCtx)
+	}()
+
+	shutdownMeter, err := observability.InitMeterProvider(ctx, obsCfg)
+	if err != nil {
+		log.Fatalf("matching-batch: init meter provider: %v", err)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = shutdownMeter(shutdownCtx)
+	}()
+
+	metrics, err := observability.NewMetrics(otel.Meter("matching-batch"))
+	if err != nil {
+		log.Fatalf("matching-batch: new metrics: %v", err)
+	}
+
 	switch *demo {
 	case "serve":
-		err = runServe()
+		err = runServe(metrics)
 	default:
-		err = runSeedDemo()
+		err = runSeedDemo(metrics)
 	}
 	if err != nil {
 		log.Fatalf("matching-batch: %v", err)
 	}
+}
+
+// instrumentedWorker wraps batch.PartitionWorker with
+// observability.WrapBatchJob (plans/task/core/16) - a fresh root span
+// plus golden-signal metrics per job, without internal/matching/batch
+// itself needing to import internal/platform/observability (see
+// batch.NewRiverClient's doc comment on why it accepts the
+// river.Worker[PartitionJobArgs] interface rather than the concrete
+// worker type).
+type instrumentedWorker struct {
+	river.WorkerDefaults[batch.PartitionJobArgs]
+	inner   *batch.PartitionWorker
+	metrics *observability.Metrics
+}
+
+func (w *instrumentedWorker) Work(ctx context.Context, job *river.Job[batch.PartitionJobArgs]) error {
+	return observability.WrapBatchJob(ctx, "matching-batch", "process_partition", w.metrics, 0, func(ctx context.Context) error {
+		return w.inner.Work(ctx, job)
+	})
 }
 
 func envOrDefault(key, def string) string {
@@ -86,7 +141,7 @@ func newWorkerDeps(appPool *pgxpool.Pool) batch.WorkerDeps {
 // Definition of Done: seed a small tenant, two accounts, a handful of
 // transactions, and one active rule; run the worker end-to-end via a real
 // River client; report the resulting match/break outcomes.
-func runSeedDemo() error {
+func runSeedDemo(metrics *observability.Metrics) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
@@ -165,7 +220,7 @@ func runSeedDemo() error {
 		return fmt.Errorf("seed match rule: %w", err)
 	}
 
-	worker := &batch.PartitionWorker{Deps: newWorkerDeps(appPool)}
+	worker := &instrumentedWorker{inner: &batch.PartitionWorker{Deps: newWorkerDeps(appPool)}, metrics: metrics}
 	riverClient, err := batch.NewRiverClient(superuserPool, worker, 0)
 	if err != nil {
 		return fmt.Errorf("new river client: %w", err)
@@ -235,7 +290,7 @@ func waitForJobs(ctx context.Context, pool *pgxpool.Pool, timeout time.Duration)
 // Implementation Notes describes) that periodically calls
 // EnumeratePartitions and enqueues anything new. Blocks until
 // interrupted.
-func runServe() error {
+func runServe(metrics *observability.Metrics) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 24*time.Hour)
 	defer cancel()
 
@@ -258,7 +313,7 @@ func runServe() error {
 		return fmt.Errorf("ensure river schema: %w", err)
 	}
 
-	worker := &batch.PartitionWorker{Deps: newWorkerDeps(appPool)}
+	worker := &instrumentedWorker{inner: &batch.PartitionWorker{Deps: newWorkerDeps(appPool)}, metrics: metrics}
 	riverClient, err := batch.NewRiverClient(superuserPool, worker, 0)
 	if err != nil {
 		return fmt.Errorf("new river client: %w", err)

@@ -10,18 +10,22 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.opentelemetry.io/otel"
 
 	"github.com/koriebruh/Jengine/gen/go/jengine/v1/jenginev1connect"
 	"github.com/koriebruh/Jengine/internal/apiserver"
 	"github.com/koriebruh/Jengine/internal/audit"
 	"github.com/koriebruh/Jengine/internal/cases"
 	"github.com/koriebruh/Jengine/internal/matching/rules"
+	"github.com/koriebruh/Jengine/internal/platform/observability"
 	"github.com/koriebruh/Jengine/internal/storage/postgres"
 	"github.com/koriebruh/Jengine/internal/tenancy"
 )
@@ -50,6 +54,45 @@ func main() {
 	addr := envOrDefault("COREAPI_ADDR", ":8081")
 	jwtSecret := envOrDefault("JWT_SECRET", "dev-only-insecure-secret")
 
+	obsCfg := observability.Config{
+		ServiceName: "coreapi", ServiceVersion: "dev", Environment: envOrDefault("ENVIRONMENT", "dev"),
+		OTLPEndpoint: envOrDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4318"),
+		MetricsAddr:  envOrDefault("METRICS_ADDR", ":9091"),
+	}
+	logger := observability.NewLogger(obsCfg)
+	slog.SetDefault(logger)
+
+	shutdownTracer, err := observability.InitTracerProvider(ctx, obsCfg)
+	if err != nil {
+		log.Fatalf("coreapi: init tracer provider: %v", err)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := shutdownTracer(shutdownCtx); err != nil {
+			log.Printf("coreapi: tracer shutdown: %v", err)
+		}
+	}()
+
+	shutdownMeter, err := observability.InitMeterProvider(ctx, obsCfg)
+	if err != nil {
+		log.Fatalf("coreapi: init meter provider: %v", err)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := shutdownMeter(shutdownCtx); err != nil {
+			log.Printf("coreapi: meter shutdown: %v", err)
+		}
+	}()
+
+	metrics, err := observability.NewMetrics(otel.Meter("coreapi"))
+	if err != nil {
+		log.Fatalf("coreapi: new metrics: %v", err)
+	}
+	interceptor := observability.NewConnectInterceptor("coreapi", metrics)
+	handlerOpts := []connect.HandlerOption{connect.WithInterceptors(interceptor)}
+
 	superuserPool, err := pgxpool.New(ctx, superuserDSN)
 	if err != nil {
 		log.Fatalf("coreapi: connect as superuser: %v", err)
@@ -71,18 +114,18 @@ func main() {
 	mux := http.NewServeMux()
 
 	accountHandler := &apiserver.AccountServiceHandler{Pool: appPool, Accounts: postgres.NewAccountRepo(), Idempotency: idempotency}
-	mux.Handle(jenginev1connect.NewAccountServiceHandler(accountHandler))
+	mux.Handle(jenginev1connect.NewAccountServiceHandler(accountHandler, handlerOpts...))
 
 	statementHandler := &apiserver.StatementServiceHandler{Pool: appPool, Statements: postgres.NewStatementRepo()}
-	mux.Handle(jenginev1connect.NewStatementServiceHandler(statementHandler))
+	mux.Handle(jenginev1connect.NewStatementServiceHandler(statementHandler, handlerOpts...))
 
 	transactionHandler := &apiserver.TransactionServiceHandler{Pool: appPool, Transactions: postgres.NewTransactionRepo()}
-	mux.Handle(jenginev1connect.NewTransactionServiceHandler(transactionHandler))
+	mux.Handle(jenginev1connect.NewTransactionServiceHandler(transactionHandler, handlerOpts...))
 
 	matchRuleHandler := &apiserver.MatchRuleServiceHandler{
 		Pool: appPool, Rules: postgres.NewMatchRuleRepo(), Registry: rules.DefaultRegistry(), Idempotency: idempotency,
 	}
-	mux.Handle(jenginev1connect.NewMatchRuleServiceHandler(matchRuleHandler))
+	mux.Handle(jenginev1connect.NewMatchRuleServiceHandler(matchRuleHandler, handlerOpts...))
 
 	lifecycle := cases.NewPostgresLifecycleService(newCasesTxRunner(appPool), postgres.NewCaseRepo(), auditWriter)
 
@@ -90,10 +133,10 @@ func main() {
 		Pool: appPool, MatchResults: postgres.NewMatchResultRepo(), Transactions: postgres.NewTransactionRepo(),
 		Lifecycle: lifecycle, Audit: auditWriter, Idempotency: idempotency,
 	}
-	mux.Handle(jenginev1connect.NewMatchReviewServiceHandler(matchReviewHandler))
+	mux.Handle(jenginev1connect.NewMatchReviewServiceHandler(matchReviewHandler, handlerOpts...))
 
 	breakHandler := &apiserver.BreakServiceHandler{Pool: appPool, Cases: postgres.NewCaseRepo(), Lifecycle: lifecycle, Idempotency: idempotency}
-	mux.Handle(jenginev1connect.NewBreakServiceHandler(breakHandler))
+	mux.Handle(jenginev1connect.NewBreakServiceHandler(breakHandler, handlerOpts...))
 
 	handler := apiserver.WrapAuth(authMiddleware, mux)
 
