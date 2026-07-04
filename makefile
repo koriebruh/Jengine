@@ -63,8 +63,15 @@ seed: ## Loads the sample MT940 file through the SFTP+MT940 connector path (plan
 test-unit:
 	go test -race -short ./...
 
+# Real convention across this codebase is testing.Short()-gated skip
+# (every integration test starts "if testing.Short() { t.Skip(...) }"),
+# not a Integration-name/-tags=integration convention - this target used
+# to specify a filter matching zero tests anywhere in the repo (found
+# during plans/task/core/17's own review: it had been silently running
+# nothing all along). Omitting -short is what actually includes the
+# Docker-backed integration tests test-unit's -short explicitly excludes.
 test-integration:
-	go test -race -run Integration -tags=integration ./...
+	go test -race ./...
 
 test-golden:
 	go test -race ./internal/matching/core/... -run Golden

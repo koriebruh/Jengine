@@ -2,6 +2,7 @@ package core_test
 
 import (
 	"testing"
+	"testing/quick"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -126,5 +127,64 @@ func TestFindGroup_EmptyCandidatesNeverFound(t *testing.T) {
 	_, found := core.FindGroup(nil, decimal.RequireFromString("100.00"), core.ToleranceSpec{Kind: "exact"}, 5)
 	if found {
 		t.Fatal("expected no group from an empty candidate set")
+	}
+}
+
+// TestFindGroup_PropertyInvariants is plans/task/core/17's property-based
+// test requirement for task 10's bounded one-to-many grouping helper
+// (Design Reference: "a testing/quick-style or a small custom generator
+// for synthetic candidate sets" - not testing the full many-to-many DP
+// solver, which doesn't exist at MVP). Runs the invariants every prior
+// hand-picked test in this file checks individually, across hundreds of
+// randomly generated candidate sets: whenever FindGroup reports a group,
+// that group (1) never exceeds maxGroupSize, (2) contains no candidate
+// twice, (3) sums to exactly target (exact-tolerance case), and (4) is a
+// genuine subset of the input candidates, not a fabricated result.
+func TestFindGroup_PropertyInvariants(t *testing.T) {
+	property := func(amountsCents []int16, targetCents int16, maxGroupSizeSeed uint8) bool {
+		if len(amountsCents) == 0 || len(amountsCents) > 12 {
+			return true // quick.Check will still explore plenty of in-range cases
+		}
+		maxGroupSize := int(maxGroupSizeSeed%5) + 1 // bound to 1..5
+
+		candidates := make([]core.MatchableRecord, len(amountsCents))
+		for i, cents := range amountsCents {
+			candidates[i] = core.MatchableRecord{ID: uuid.New(), BaseAmount: decimal.New(int64(cents), -2)}
+		}
+		target := decimal.New(int64(targetCents), -2)
+		tol := core.ToleranceSpec{Kind: "exact"}
+
+		group, found := core.FindGroup(candidates, target, tol, maxGroupSize)
+		if !found {
+			return true // nothing further to check when no group is claimed
+		}
+
+		if len(group) > maxGroupSize {
+			return false
+		}
+
+		original := make(map[uuid.UUID]bool, len(candidates))
+		for _, c := range candidates {
+			original[c.ID] = true
+		}
+
+		seen := make(map[uuid.UUID]bool, len(group))
+		sum := decimal.Zero
+		for _, r := range group {
+			if seen[r.ID] {
+				return false // double allocation within the same group
+			}
+			seen[r.ID] = true
+			if !original[r.ID] {
+				return false // fabricated result not present in the input
+			}
+			sum = sum.Add(r.BaseAmount)
+		}
+
+		return sum.Equal(target)
+	}
+
+	if err := quick.Check(property, &quick.Config{MaxCount: 500}); err != nil {
+		t.Error(err)
 	}
 }
