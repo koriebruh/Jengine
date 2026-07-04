@@ -113,4 +113,35 @@ func (r *MatchRuleRepo) UpdateStatus(ctx context.Context, tenantID uuid.UUID, id
 	return nil
 }
 
+// ListByTenant supports plans/task/core/15's ListRules endpoint - every
+// rule for the tenant, optionally filtered by status.
+func (r *MatchRuleRepo) ListByTenant(ctx context.Context, tenantID uuid.UUID, status domain.MatchRuleStatus) ([]domain.MatchRule, error) {
+	tx, err := requireTx(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := tx.Query(ctx,
+		`SELECT id, tenant_id, name, version, status, rule_spec, match_type, source_account_id, target_account_id, priority, auto_match_threshold, created_by, approved_by, effective_from, created_at, updated_at
+		 FROM match_rules
+		 WHERE ($1 = '' OR status = $1)
+		 ORDER BY created_at DESC`,
+		status,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: MatchRuleRepo.ListByTenant: %w", err)
+	}
+	defer rows.Close()
+
+	var rules []domain.MatchRule
+	for rows.Next() {
+		var rule domain.MatchRule
+		if err := rows.Scan(&rule.ID, &rule.TenantID, &rule.Name, &rule.Version, &rule.Status, &rule.RuleSpec, &rule.MatchType, &rule.SourceAccountID, &rule.TargetAccountID, &rule.Priority, &rule.AutoMatchThreshold, &rule.CreatedBy, &rule.ApprovedBy, &rule.EffectiveFrom, &rule.CreatedAt, &rule.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("postgres: MatchRuleRepo.ListByTenant: scan: %w", err)
+		}
+		rules = append(rules, rule)
+	}
+	return rules, rows.Err()
+}
+
 var _ domain.MatchRuleRepository = (*MatchRuleRepo)(nil)

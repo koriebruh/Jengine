@@ -49,6 +49,12 @@ type TransactionRepository interface {
 	BulkUpdateStatus(ctx context.Context, tenantID uuid.UUID, ids []uuid.UUID, status TransactionStatus) error
 	// ExistsByIdempotencyKey supports plans/task/core/09's dedup path.
 	ExistsByIdempotencyKey(ctx context.Context, tenantID uuid.UUID, key string) (bool, error)
+	// ListByFilter supports plans/task/core/15's ListTransactions endpoint -
+	// a generic filtered listing, unlike ListUnmatched which is hardcoded
+	// to status=UNMATCHED for the matching engine's own use. status=""
+	// means no status filter; a zero valueDateFrom/valueDateTo means no
+	// date-range filter on that bound.
+	ListByFilter(ctx context.Context, tenantID uuid.UUID, accountID uuid.UUID, status TransactionStatus, valueDateFrom, valueDateTo time.Time) ([]Transaction, error)
 }
 
 type MatchRuleRepository interface {
@@ -59,6 +65,11 @@ type MatchRuleRepository interface {
 	// chaining: lower priority runs first).
 	ListActive(ctx context.Context, tenantID uuid.UUID, sourceAccountID, targetAccountID uuid.UUID) ([]MatchRule, error)
 	UpdateStatus(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, status MatchRuleStatus, approvedBy *string) error
+	// ListByTenant supports plans/task/core/15's ListRules endpoint -
+	// every rule for the tenant, optionally filtered by status (empty
+	// string = no filter), unlike ListActive which is scoped to one
+	// account pair for the matching engine's own use.
+	ListByTenant(ctx context.Context, tenantID uuid.UUID, status MatchRuleStatus) ([]MatchRule, error)
 }
 
 // MatchResultRepository covers both MatchResult and MatchResultLine
@@ -86,6 +97,11 @@ type CaseRepository interface {
 	// automatically at MVP (plans/docs/05-case-management.md §6.6: root
 	// causes feed future rule-suggestion features, not built yet).
 	UpdateRootCause(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, category string) error
+	// UpdateAssignee sets assigned_to - plans/task/core/13's Assign is the
+	// only caller. Found missing during plans/task/core/15's own
+	// integration testing: Assign was updating status to ASSIGNED but
+	// never actually persisting who it was assigned to.
+	UpdateAssignee(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, assignee string) error
 
 	AddComment(ctx context.Context, tenantID uuid.UUID, c CaseComment) (CaseComment, error)
 	ListComments(ctx context.Context, tenantID uuid.UUID, caseID uuid.UUID) ([]CaseComment, error)

@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package jengine.v1;
+
+import "google/protobuf/timestamp.proto";
+import "jengine/v1/common.proto";
+
+option go_package = "github.com/koriebruh/Jengine/gen/go/jengine/v1;jenginev1";
+
+message Account {
+  string id = 1;
+  string external_account_ref = 2;
+  string account_type = 3; // BANK|GL|GATEWAY|CASH
+  string currency = 4;
+  string name = 5;
+  string metadata_json = 6; // raw jsonb, opaque to the API layer
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message CreateAccountRequest {
+  string external_account_ref = 1;
+  string account_type = 2;
+  string currency = 3;
+  string name = 4;
+  string metadata_json = 5;
+}
+
+message CreateAccountResponse {
+  Account account = 1;
+}
+
+message GetAccountRequest {
+  string id = 1;
+}
+
+message GetAccountResponse {
+  Account account = 1;
+}
+
+message ListAccountsRequest {
+  PageRequest page = 1;
+}
+
+message ListAccountsResponse {
+  repeated Account accounts = 1;
+  PageResponse page = 2;
+}
+
+service AccountService {
+  rpc CreateAccount(CreateAccountRequest) returns (CreateAccountResponse);
+  rpc GetAccount(GetAccountRequest) returns (GetAccountResponse);
+  rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse);
+}

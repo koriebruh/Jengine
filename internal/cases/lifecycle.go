@@ -141,6 +141,9 @@ func (s *PostgresLifecycleService) assignLocked(ctx context.Context, breakID uui
 	if err := s.Cases.UpdateStatus(ctx, tenantID, breakID, BreakAssigned); err != nil {
 		return fmt.Errorf("cases: assign: update status: %w", err)
 	}
+	if err := s.Cases.UpdateAssignee(ctx, tenantID, breakID, assignee); err != nil {
+		return fmt.Errorf("cases: assign: update assignee: %w", err)
+	}
 	after := before
 	after.Status = BreakAssigned
 	after.AssignedTo = &assignee

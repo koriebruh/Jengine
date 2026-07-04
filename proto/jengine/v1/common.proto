@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package jengine.v1;
+
+option go_package = "github.com/koriebruh/Jengine/gen/go/jengine/v1;jenginev1";
+
+// PageRequest/PageResponse follow plans/docs/07-api-extensibility.md
+// §8.1's page_token convention.
+message PageRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+message PageResponse {
+  string next_page_token = 1;
+}
+
+// BulkResult reports a per-ID outcome for any bulk operation - mirrors
+// internal/cases.BulkResult's shape (plans/task/core/13/15: a bulk call
+// over a heterogeneous selection can legitimately partially fail, e.g.
+// bulk-resolving breaks where one is already resolved - the frontend
+// needs the per-ID breakdown, not a collapsed pass/fail).
+message BulkResult {
+  string batch_op_id = 1;
+  repeated string succeeded = 2;
+  map<string, string> failed = 3; // id -> failure reason
+}

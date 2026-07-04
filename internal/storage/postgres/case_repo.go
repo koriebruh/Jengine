@@ -132,6 +132,25 @@ func (r *CaseRepo) UpdateRootCause(ctx context.Context, tenantID uuid.UUID, id u
 	return nil
 }
 
+func (r *CaseRepo) UpdateAssignee(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, assignee string) error {
+	tx, err := requireTx(ctx, tenantID)
+	if err != nil {
+		return err
+	}
+
+	tag, err := tx.Exec(ctx,
+		`UPDATE cases SET assigned_to = $1, updated_at = now() WHERE id = $2`,
+		assignee, id,
+	)
+	if err != nil {
+		return fmt.Errorf("postgres: CaseRepo.UpdateAssignee: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (r *CaseRepo) AddComment(ctx context.Context, tenantID uuid.UUID, c domain.CaseComment) (domain.CaseComment, error) {
 	tx, err := requireTx(ctx, tenantID)
 	if err != nil {

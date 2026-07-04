@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package jengine.v1;
+
+import "google/protobuf/timestamp.proto";
+import "jengine/v1/common.proto";
+
+option go_package = "github.com/koriebruh/Jengine/gen/go/jengine/v1;jenginev1";
+
+// MatchRule mirrors match_rules - rule_spec_yaml is the raw YAML/JSON the
+// tenant authored (plans/docs/14-dashboard-frontend.md §14.4: MVP has no
+// rule-builder UI, rules are authored "as raw YAML/JSON via API/CLI").
+message MatchRule {
+  string id = 1;
+  string name = 2;
+  int32 version = 3;
+  string status = 4; // DRAFT|ACTIVE|ARCHIVED
+  string rule_spec_yaml = 5;
+  string match_type = 6; // EXACT|TOLERANCE|FUZZY|COMPOSITE
+  string source_account_id = 7;
+  string target_account_id = 8;
+  int32 priority = 9;
+  string auto_match_threshold = 10; // decimal, string-encoded
+  string created_by = 11;
+  string approved_by = 12;
+  google.protobuf.Timestamp effective_from = 13;
+  google.protobuf.Timestamp created_at = 14;
+}
+
+message CreateDraftRuleRequest {
+  string rule_spec_yaml = 1; // parsed/compiled via internal/matching/rules.ParseYAML+Compile
+  string source_account_id = 2;
+  string target_account_id = 3;
+  string created_by = 4;
+}
+
+message CreateDraftRuleResponse {
+  MatchRule rule = 1;
+}
+
+message ActivateRuleRequest {
+  string id = 1;
+  string approved_by = 2; // must differ from the rule's created_by - maker-checker-lite
+}
+
+message ActivateRuleResponse {
+  MatchRule rule = 1;
+}
+
+message GetRuleRequest {
+  string id = 1;
+}
+
+message GetRuleResponse {
+  MatchRule rule = 1;
+}
+
+message ListRulesRequest {
+  string status = 1; // optional filter
+  PageRequest page = 2;
+}
+
+message ListRulesResponse {
+  repeated MatchRule rules = 1;
+  PageResponse page = 2;
+}
+
+service MatchRuleService {
+  rpc CreateDraftRule(CreateDraftRuleRequest) returns (CreateDraftRuleResponse);
+  rpc ActivateRule(ActivateRuleRequest) returns (ActivateRuleResponse);
+  rpc GetRule(GetRuleRequest) returns (GetRuleResponse);
+  rpc ListRules(ListRulesRequest) returns (ListRulesResponse);
+}

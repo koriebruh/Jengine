@@ -1,0 +1,148 @@
+syntax = "proto3";
+
+package jengine.v1;
+
+import "google/protobuf/timestamp.proto";
+import "jengine/v1/common.proto";
+
+option go_package = "github.com/koriebruh/Jengine/gen/go/jengine/v1;jenginev1";
+
+// Break mirrors the cases table (the Break/Case entity - plans/task/core/13's
+// domain.Case). Thin wrappers over cases.LifecycleService, per
+// plans/task/core/15 Implementation Notes.
+message Break {
+  string id = 1;
+  string account_id = 2;
+  repeated string related_transaction_ids = 3;
+  string break_type = 4;
+  string root_cause_category = 5;
+  string status = 6;
+  string assigned_to = 7;
+  string priority = 8;
+  google.protobuf.Timestamp sla_due_at = 9;
+  google.protobuf.Timestamp opened_at = 10;
+  google.protobuf.Timestamp resolved_at = 11;
+  string amount_at_risk = 12; // decimal, string-encoded
+  string currency = 13;
+}
+
+message Actor {
+  string user_id = 1;
+  string role = 2;
+}
+
+message ListBreaksRequest {
+  string status = 1;
+  string assigned_to = 2;
+  string account_id = 3;
+  string priority = 4;
+  PageRequest page = 5;
+}
+
+message ListBreaksResponse {
+  repeated Break breaks = 1;
+  PageResponse page = 2;
+}
+
+message GetBreakRequest {
+  string id = 1;
+}
+
+message GetBreakResponse {
+  Break brk = 1;
+}
+
+message AssignBreakRequest {
+  string id = 1;
+  string assignee = 2;
+  Actor actor = 3;
+}
+
+message AssignBreakResponse {}
+
+message AddCommentRequest {
+  string id = 1;
+  Actor actor = 2;
+  string body = 3;
+}
+
+message AddCommentResponse {
+  string comment_id = 1;
+}
+
+message TransitionBreakRequest {
+  string id = 1;
+  string to_status = 2;
+  Actor actor = 3;
+  string comment = 4;
+}
+
+message TransitionBreakResponse {}
+
+message RequestApprovalRequest {
+  string id = 1;
+  Actor actor = 2;
+}
+
+message RequestApprovalResponse {}
+
+message DecideApprovalRequest {
+  string id = 1;
+  Actor approver = 2;
+  bool approve = 3;
+  string comment = 4;
+}
+
+message DecideApprovalResponse {}
+
+message TagRootCauseRequest {
+  string id = 1;
+  string category = 2;
+  Actor actor = 3;
+}
+
+message TagRootCauseResponse {}
+
+message BulkAssignBreaksRequest {
+  repeated string ids = 1;
+  string assignee = 2;
+  Actor actor = 3;
+}
+
+message BulkAssignBreaksResponse {
+  BulkResult result = 1;
+}
+
+message BulkCommentBreaksRequest {
+  repeated string ids = 1;
+  Actor actor = 2;
+  string body = 3;
+}
+
+message BulkCommentBreaksResponse {
+  BulkResult result = 1;
+}
+
+message BulkResolveBreaksRequest {
+  repeated string ids = 1;
+  Actor actor = 2;
+  string comment = 3;
+}
+
+message BulkResolveBreaksResponse {
+  BulkResult result = 1;
+}
+
+service BreakService {
+  rpc ListBreaks(ListBreaksRequest) returns (ListBreaksResponse);
+  rpc GetBreak(GetBreakRequest) returns (GetBreakResponse);
+  rpc AssignBreak(AssignBreakRequest) returns (AssignBreakResponse);
+  rpc AddComment(AddCommentRequest) returns (AddCommentResponse);
+  rpc TransitionBreak(TransitionBreakRequest) returns (TransitionBreakResponse);
+  rpc RequestApproval(RequestApprovalRequest) returns (RequestApprovalResponse);
+  rpc DecideApproval(DecideApprovalRequest) returns (DecideApprovalResponse);
+  rpc TagRootCause(TagRootCauseRequest) returns (TagRootCauseResponse);
+  rpc BulkAssignBreaks(BulkAssignBreaksRequest) returns (BulkAssignBreaksResponse);
+  rpc BulkCommentBreaks(BulkCommentBreaksRequest) returns (BulkCommentBreaksResponse);
+  rpc BulkResolveBreaks(BulkResolveBreaksRequest) returns (BulkResolveBreaksResponse);
+}

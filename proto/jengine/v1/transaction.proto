@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package jengine.v1;
+
+import "google/protobuf/timestamp.proto";
+import "jengine/v1/common.proto";
+
+option go_package = "github.com/koriebruh/Jengine/gen/go/jengine/v1;jenginev1";
+
+// Transaction is read-only via this API for MVP - no direct mutation
+// endpoint (plans/task/core/15 Implementation Notes).
+message Transaction {
+  string id = 1;
+  string account_id = 2;
+  string external_ref = 3;
+  string amount = 4; // decimal, string-encoded - never float
+  string currency = 5;
+  string base_amount = 6;
+  google.protobuf.Timestamp value_date = 7;
+  google.protobuf.Timestamp booking_date = 8;
+  string description = 9;
+  string counterparty_ref = 10;
+  string side = 11; // DEBIT|CREDIT
+  string status = 12; // UNMATCHED|MATCHED|PARTIALLY_MATCHED|EXCEPTION
+  google.protobuf.Timestamp created_at = 13;
+}
+
+message GetTransactionRequest {
+  string id = 1;
+}
+
+message GetTransactionResponse {
+  Transaction transaction = 1;
+}
+
+message ListTransactionsRequest {
+  string account_id = 1;
+  string status = 2; // optional filter
+  google.protobuf.Timestamp value_date_from = 3;
+  google.protobuf.Timestamp value_date_to = 4;
+  PageRequest page = 5;
+}
+
+message ListTransactionsResponse {
+  repeated Transaction transactions = 1;
+  PageResponse page = 2;
+}
+
+service TransactionService {
+  rpc GetTransaction(GetTransactionRequest) returns (GetTransactionResponse);
+  rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse);
+}

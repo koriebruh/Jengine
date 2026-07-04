@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package jengine.v1;
+
+import "google/protobuf/timestamp.proto";
+import "jengine/v1/common.proto";
+
+option go_package = "github.com/koriebruh/Jengine/gen/go/jengine/v1;jenginev1";
+
+// Statement is read-only via this API - statements are created by
+// ingestion (plans/task/core/06-09), not via AccountService/StatementService
+// (plans/task/core/15 Implementation Notes).
+message Statement {
+  string id = 1;
+  string account_id = 2;
+  string source_connector_id = 3;
+  string format = 4;
+  google.protobuf.Timestamp received_at = 5;
+  google.protobuf.Timestamp period_start = 6;
+  google.protobuf.Timestamp period_end = 7;
+  string opening_balance = 8; // decimal, string-encoded - never float
+  string closing_balance = 9;
+  string status = 10; // RECEIVED|PARSED|VALIDATED|RECONCILED
+  string checksum = 11;
+  google.protobuf.Timestamp created_at = 12;
+}
+
+message GetStatementRequest {
+  string id = 1;
+}
+
+message GetStatementResponse {
+  Statement statement = 1;
+}
+
+message ListStatementsRequest {
+  string account_id = 1;
+  PageRequest page = 2;
+}
+
+message ListStatementsResponse {
+  repeated Statement statements = 1;
+  PageResponse page = 2;
+}
+
+service StatementService {
+  rpc GetStatement(GetStatementRequest) returns (GetStatementResponse);
+  rpc ListStatements(ListStatementsRequest) returns (ListStatementsResponse);
+}

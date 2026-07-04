@@ -7,14 +7,18 @@ module github.com/koriebruh/Jengine
 go 1.25.0
 
 require (
+	connectrpc.com/connect v1.20.0
 	github.com/ProtonMail/go-crypto v1.4.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/minio/minio-go/v7 v7.2.1
 	github.com/moby/moby/api v1.54.2
+	github.com/oklog/ulid/v2 v2.1.1
 	github.com/pkg/sftp v1.13.10
 	github.com/redis/go-redis/v9 v9.21.0
+	github.com/riverqueue/river v0.40.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.40.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/shopspring/decimal v1.4.0
 	github.com/testcontainers/testcontainers-go v0.43.0
@@ -25,6 +29,8 @@ require (
 	golang.org/x/crypto v0.53.0
 	golang.org/x/sync v0.21.0
 	golang.org/x/tools v0.47.0
+	google.golang.org/protobuf v1.36.11
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -69,7 +75,6 @@ require (
 	github.com/moby/sys/user v0.4.0 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/moby/term v0.5.2 // indirect
-	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
@@ -78,9 +83,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/richardlehane/mscfb v1.0.6 // indirect
 	github.com/richardlehane/msoleps v1.0.6 // indirect
-	github.com/riverqueue/river v0.40.0 // indirect
 	github.com/riverqueue/river/riverdriver v0.40.0 // indirect
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.40.0 // indirect
 	github.com/riverqueue/river/rivershared v0.40.0 // indirect
 	github.com/riverqueue/river/rivertype v0.40.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
@@ -113,5 +116,4 @@ require (
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
 	gopkg.in/ini.v1 v1.67.2 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

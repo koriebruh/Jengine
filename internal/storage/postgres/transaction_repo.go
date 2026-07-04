@@ -98,6 +98,41 @@ func (r *TransactionRepo) ListUnmatched(ctx context.Context, tenantID uuid.UUID,
 	return out, rows.Err()
 }
 
+// ListByFilter supports plans/task/core/15's ListTransactions endpoint -
+// a generic filtered listing (status/date-range optional), unlike
+// ListUnmatched's hardcoded status=UNMATCHED for the matching engine.
+func (r *TransactionRepo) ListByFilter(ctx context.Context, tenantID uuid.UUID, accountID uuid.UUID, status domain.TransactionStatus, valueDateFrom, valueDateTo time.Time) ([]domain.Transaction, error) {
+	tx, err := requireTx(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := tx.Query(ctx,
+		`SELECT id, tenant_id, account_id, statement_id, COALESCE(external_ref, ''), amount, currency, fx_rate_to_base, base_amount, value_date, booking_date, COALESCE(description, ''), COALESCE(counterparty_ref, ''), COALESCE(transaction_type, ''), side, source_mode, ingestion_idempotency_key, status, raw_payload, created_at, updated_at
+		 FROM transactions
+		 WHERE account_id = $1
+		   AND ($2 = '' OR status = $2)
+		   AND ($3::date IS NULL OR value_date >= $3::date)
+		   AND ($4::date IS NULL OR value_date <= $4::date)
+		 ORDER BY value_date`,
+		accountID, status, nullableTime(valueDateFrom), nullableTime(valueDateTo),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: TransactionRepo.ListByFilter: %w", err)
+	}
+	defer rows.Close()
+
+	var out []domain.Transaction
+	for rows.Next() {
+		var t domain.Transaction
+		if err := rows.Scan(scanTransactionDest(&t)...); err != nil {
+			return nil, fmt.Errorf("postgres: TransactionRepo.ListByFilter: scan: %w", err)
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
 func (r *TransactionRepo) UpdateStatus(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, status domain.TransactionStatus) error {
 	tx, err := requireTx(ctx, tenantID)
 	if err != nil {

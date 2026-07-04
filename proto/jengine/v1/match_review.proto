@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package jengine.v1;
+
+import "google/protobuf/timestamp.proto";
+import "jengine/v1/common.proto";
+
+option go_package = "github.com/koriebruh/Jengine/gen/go/jengine/v1;jenginev1";
+
+message SuggestedMatch {
+  string id = 1; // MatchResult.ID
+  string rule_id = 2;
+  string match_type = 3; // ONE_TO_ONE|ONE_TO_MANY|MANY_TO_ONE|MANY_TO_MANY
+  string confidence_score = 4; // decimal, string-encoded
+  repeated string source_transaction_ids = 5;
+  repeated string target_transaction_ids = 6;
+  google.protobuf.Timestamp matched_at = 7;
+}
+
+message ListSuggestedMatchesRequest {
+  PageRequest page = 1;
+}
+
+message ListSuggestedMatchesResponse {
+  repeated SuggestedMatch matches = 1;
+  PageResponse page = 2;
+}
+
+message ConfirmMatchRequest {
+  string id = 1;
+  string confirmed_by = 2;
+}
+
+message ConfirmMatchResponse {
+  SuggestedMatch match = 1;
+}
+
+message RejectMatchRequest {
+  string id = 1;
+  string rejected_by = 2;
+  string reason = 3;
+}
+
+message RejectMatchResponse {
+  string break_id = 1; // the Break/Case opened from the rejected match's transactions
+}
+
+message BulkConfirmMatchesRequest {
+  repeated string ids = 1;
+  string confirmed_by = 2;
+}
+
+message BulkConfirmMatchesResponse {
+  BulkResult result = 1;
+}
+
+service MatchReviewService {
+  rpc ListSuggestedMatches(ListSuggestedMatchesRequest) returns (ListSuggestedMatchesResponse);
+  rpc ConfirmMatch(ConfirmMatchRequest) returns (ConfirmMatchResponse);
+  rpc RejectMatch(RejectMatchRequest) returns (RejectMatchResponse);
+  rpc BulkConfirmMatches(BulkConfirmMatchesRequest) returns (BulkConfirmMatchesResponse);
+}
