@@ -113,6 +113,25 @@ func (r *CaseRepo) UpdateStatus(ctx context.Context, tenantID uuid.UUID, id uuid
 	return nil
 }
 
+func (r *CaseRepo) UpdateRootCause(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, category string) error {
+	tx, err := requireTx(ctx, tenantID)
+	if err != nil {
+		return err
+	}
+
+	tag, err := tx.Exec(ctx,
+		`UPDATE cases SET root_cause_category = $1, updated_at = now() WHERE id = $2`,
+		category, id,
+	)
+	if err != nil {
+		return fmt.Errorf("postgres: CaseRepo.UpdateRootCause: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (r *CaseRepo) AddComment(ctx context.Context, tenantID uuid.UUID, c domain.CaseComment) (domain.CaseComment, error) {
 	tx, err := requireTx(ctx, tenantID)
 	if err != nil {

@@ -14,15 +14,15 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"log/slog"
 	"os"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/koriebruh/Jengine/internal/audit"
+	"github.com/koriebruh/Jengine/internal/cases"
 	"github.com/koriebruh/Jengine/internal/matching/batch"
-	"github.com/koriebruh/Jengine/internal/matching/core"
 	"github.com/koriebruh/Jengine/internal/matching/rules"
 	"github.com/koriebruh/Jengine/internal/storage/postgres"
 	"github.com/koriebruh/Jengine/internal/tenancy"
@@ -51,26 +51,24 @@ func envOrDefault(key, def string) string {
 	return def
 }
 
-// loggingBreakSink is a stand-in for plans/task/core/13's real BreakSink
-// implementation, which doesn't exist yet - plans/task/core/12's own
-// Prerequisites explicitly allow this sequencing ("task 12 and task 13
-// can be built in either order... as long as the BreakSink interface is
-// respected"). Logs what it would have opened rather than persisting
-// anything, so this binary is runnable end-to-end today without task 13.
-type loggingBreakSink struct{}
-
-func (loggingBreakSink) OpenBreak(ctx context.Context, params core.OpenBreakParams) error {
-	slog.Info("matching-batch: would open break (plans/task/core/13 not yet implemented)",
-		"tenant_id", params.TenantID, "account_id", params.AccountID,
-		"transaction_ids", params.TransactionIDs, "break_type", params.BreakType,
-		"amount_at_risk", params.AmountAtRisk, "currency", params.Currency)
-	return nil
-}
-
 func newTxRunner(pool *pgxpool.Pool) batch.TxRunner {
 	return func(ctx context.Context, tenantID uuid.UUID, fn func(ctx context.Context) error) error {
 		return postgres.WithTx(tenancy.WithTenant(ctx, tenancy.TenantContext{TenantID: tenantID}), pool, tenantID, fn)
 	}
+}
+
+// newBreakSink wires the real plans/task/core/13 BreakSink implementation
+// (cases.BreakSinkAdapter over cases.PostgresLifecycleService) - this
+// binary was originally built and manually verified against a logging
+// stand-in before task 13 existed (its own Prerequisites explicitly allow
+// that sequencing), now replaced with the real thing.
+func newBreakSink(appPool *pgxpool.Pool) *cases.BreakSinkAdapter {
+	lifecycle := cases.NewPostgresLifecycleService(
+		cases.TxRunner(newTxRunner(appPool)),
+		postgres.NewCaseRepo(),
+		audit.NewPostgresWriter(),
+	)
+	return cases.NewBreakSinkAdapter(lifecycle)
 }
 
 func newWorkerDeps(appPool *pgxpool.Pool) batch.WorkerDeps {
@@ -80,7 +78,7 @@ func newWorkerDeps(appPool *pgxpool.Pool) batch.WorkerDeps {
 		MatchResults: postgres.NewMatchResultRepo(),
 		MatchRules:   postgres.NewMatchRuleRepo(),
 		Registry:     rules.DefaultRegistry(),
-		BreakSink:    loggingBreakSink{},
+		BreakSink:    newBreakSink(appPool),
 	}
 }
 
@@ -201,10 +199,17 @@ func runSeedDemo() error {
 	if err := superuserPool.QueryRow(ctx, `SELECT count(*) FROM match_results WHERE tenant_id = $1`, tenantID).Scan(&matchResultCount); err != nil {
 		return fmt.Errorf("count match_results: %w", err)
 	}
+	var breakStatus, breakID string
+	if err := superuserPool.QueryRow(ctx,
+		`SELECT id, status FROM cases WHERE tenant_id = $1 AND $2 = ANY(related_transaction_ids)`,
+		tenantID, unmatchedTx,
+	).Scan(&breakID, &breakStatus); err != nil {
+		breakStatus = "ERROR:" + err.Error()
+	}
 
 	log.Printf("matching-batch: SEED DEMO RESULTS - tenant=%s", tenantID)
 	log.Printf("  matched pair: source=%s status=%s, target=%s status=%s", matchSrc, statusOf(matchSrc), matchTgt, statusOf(matchTgt))
-	log.Printf("  unmatched:    id=%s status=%s (a Break log line above should reference this ID)", unmatchedTx, statusOf(unmatchedTx))
+	log.Printf("  unmatched:    id=%s status=%s -> break id=%s status=%s (plans/task/core/13's real BreakSink)", unmatchedTx, statusOf(unmatchedTx), breakID, breakStatus)
 	log.Printf("  match_results written: %d", matchResultCount)
 	return nil
 }

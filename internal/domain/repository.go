@@ -81,6 +81,11 @@ type CaseRepository interface {
 	GetByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (Case, error)
 	ListByStatus(ctx context.Context, tenantID uuid.UUID, status CaseStatus) ([]Case, error)
 	UpdateStatus(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, status CaseStatus) error
+	// UpdateRootCause sets root_cause_category - plans/task/core/13's
+	// TagRootCause is the only caller; no rule/policy engine derives this
+	// automatically at MVP (plans/docs/05-case-management.md §6.6: root
+	// causes feed future rule-suggestion features, not built yet).
+	UpdateRootCause(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, category string) error
 
 	AddComment(ctx context.Context, tenantID uuid.UUID, c CaseComment) (CaseComment, error)
 	ListComments(ctx context.Context, tenantID uuid.UUID, caseID uuid.UUID) ([]CaseComment, error)
