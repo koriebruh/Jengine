@@ -1,0 +1,13 @@
+[
+  {
+    "id": "bc7b3005-0479-450a-b104-b46feeb46bac",
+    "tenant_id": "be09d307-8be3-45d3-bd48-2fbf15a807b8",
+    "account_id": "ebac3190-9b59-4a4c-a062-de7ec6943ceb",
+    "value_date": "2024-03-01T00:00:00Z",
+    "base_amount": "50.00",
+    "currency": "USD",
+    "reference": "INV3001",
+    "counterparty_ref": "",
+    "side": "CREDIT"
+  }
+]

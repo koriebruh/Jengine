@@ -1,0 +1,45 @@
+- id: 51e337fe-b093-4cbf-9aa0-7e19fe3708fe
+  tenant_id: be09d307-8be3-45d3-bd48-2fbf15a807b8
+  name: "Rule 1 - strict, reference-blocked, runs first"
+  version: 1
+  cardinality: ONE_TO_ONE
+  blocking_keys:
+    - field: currency
+      tolerance:
+        kind: exact
+    - field: reference
+      tolerance:
+        kind: exact
+  scoring_fields:
+    - field: reference
+      method: exact
+      weight: 0.5
+    - field: base_amount
+      method: numeric_closeness
+      weight: 0.5
+  auto_match_threshold: 0.9
+  suggest_threshold: 0.5
+  priority: 10
+  max_group_size: 5
+
+- id: 5a2686e7-be9b-4c10-a1e8-67b1cb91abb5
+  tenant_id: be09d307-8be3-45d3-bd48-2fbf15a807b8
+  name: "Rule 2 - looser, catches rule 1's residue"
+  version: 1
+  cardinality: ONE_TO_ONE
+  blocking_keys:
+    - field: currency
+      tolerance:
+        kind: exact
+    - field: value_date
+      tolerance:
+        kind: date_window
+        days: 1
+  scoring_fields:
+    - field: base_amount
+      method: numeric_closeness
+      weight: 1.0
+  auto_match_threshold: 0.9
+  suggest_threshold: 0.5
+  priority: 20
+  max_group_size: 5

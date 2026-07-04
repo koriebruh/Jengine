@@ -1,0 +1,13 @@
+{
+  "auto_matched": [
+    {
+      "rule_id": "51e337fe-b093-4cbf-9aa0-7e19fe3708fe",
+      "source_ids": ["1e1304dc-3fc9-425a-8233-8184441fa2fe"],
+      "target_ids": ["0a1e2f45-20c2-4a42-b52b-49dca1fcdc71"],
+      "score": 1.0,
+      "field_scores": {"currency": 1.0, "reference": 1.0, "base_amount": 1.0}
+    }
+  ],
+  "suggested": [],
+  "unmatched": []
+}

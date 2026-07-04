@@ -1,0 +1,13 @@
+[
+  {
+    "id": "e8c8af99-3a84-4b92-a0e2-fa1f3450cb05",
+    "tenant_id": "be09d307-8be3-45d3-bd48-2fbf15a807b8",
+    "account_id": "ebac3190-9b59-4a4c-a062-de7ec6943ceb",
+    "value_date": "2024-02-01T00:00:00Z",
+    "base_amount": "97.00",
+    "currency": "USD",
+    "reference": "DIFFERENT-REF",
+    "counterparty_ref": "",
+    "side": "CREDIT"
+  }
+]

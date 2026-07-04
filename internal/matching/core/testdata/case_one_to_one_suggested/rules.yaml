@@ -1,0 +1,31 @@
+- id: 51e337fe-b093-4cbf-9aa0-7e19fe3708fe
+  tenant_id: be09d307-8be3-45d3-bd48-2fbf15a807b8
+  name: "Exact match rule"
+  version: 1
+  cardinality: ONE_TO_ONE
+  blocking_keys:
+    - field: currency
+      tolerance:
+        kind: exact
+    - field: value_date
+      tolerance:
+        kind: date_window
+        days: 1
+    - field: base_amount
+      tolerance:
+        kind: numeric
+        absolute: "5.00"
+  scoring_fields:
+    - field: currency
+      method: exact
+      weight: 0.3
+    - field: reference
+      method: exact
+      weight: 0.4
+    - field: base_amount
+      method: numeric_closeness
+      weight: 0.3
+  auto_match_threshold: 0.9
+  suggest_threshold: 0.5
+  priority: 10
+  max_group_size: 5
