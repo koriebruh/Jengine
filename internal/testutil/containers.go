@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -107,9 +108,12 @@ func StartRedis(t *testing.T) *TestRedis {
 	return &TestRedis{Addr: opt.Addr, Client: client}
 }
 
-// findMigrationFiles locates <repo-root>/migrations/*.sql regardless of
+// findMigrationFiles locates <repo-root>/migrations/*.up.sql regardless of
 // which package's test calls StartPostgres, by walking up from the
-// current working directory to the directory containing go.mod.
+// current working directory to the directory containing go.mod. Only
+// *.up.sql is matched - *.down.sql must never be applied at container
+// init (it would immediately reverse the schema the up migrations just
+// created).
 func findMigrationFiles(t *testing.T) []string {
 	t.Helper()
 
@@ -120,10 +124,11 @@ func findMigrationFiles(t *testing.T) []string {
 
 	for {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			matches, err := filepath.Glob(filepath.Join(dir, "migrations", "*.sql"))
+			matches, err := filepath.Glob(filepath.Join(dir, "migrations", "*.up.sql"))
 			if err != nil {
 				return nil
 			}
+			sort.Strings(matches)
 			return matches
 		}
 		parent := filepath.Dir(dir)

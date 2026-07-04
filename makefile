@@ -45,10 +45,10 @@ dev-down-volumes: ## Stop the stack AND delete all volumes - destroys local data
 dev-logs:
 	$(COMPOSE) logs -f
 
-migrate: ## Wired to scripts/migrate.sh; real content lands in plans/task/core/03.
+migrate: ## Runs migrations/*.sql via golang-migrate (plans/task/core/03).
 	./scripts/migrate.sh
 
-seed: ## Wired to scripts/seed.sh; real content lands in plans/task/core/03 + 07.
+seed: ## Wired to scripts/seed.sh; real content lands in plans/task/core/07.
 	./scripts/seed.sh
 
 # --- Task 17: testing harness + CI-equivalent local run ------------------
