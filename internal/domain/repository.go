@@ -42,6 +42,11 @@ type TransactionRepository interface {
 	// must use COPY/multi-row INSERT, never row-by-row (plans/task/core/05
 	// Common Pitfalls).
 	BulkInsert(ctx context.Context, tenantID uuid.UUID, txs []Transaction) (int, error)
+	// BulkUpdateStatus updates every listed transaction's status in a
+	// single UPDATE ... WHERE id = ANY($1), not per-row
+	// (plans/task/core/12 Implementation Notes - the batch matching
+	// worker's write-back path for classifying many transactions at once).
+	BulkUpdateStatus(ctx context.Context, tenantID uuid.UUID, ids []uuid.UUID, status TransactionStatus) error
 	// ExistsByIdempotencyKey supports plans/task/core/09's dedup path.
 	ExistsByIdempotencyKey(ctx context.Context, tenantID uuid.UUID, key string) (bool, error)
 }
