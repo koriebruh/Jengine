@@ -1,0 +1,24 @@
+# Go build artifacts
+/bin/
+*.exe
+*.test
+*.out
+
+# Local env/secrets - never commit real values, only .env.example
+.env
+.env.local
+*.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Go module cache leftovers if vendoring is ever used
+/vendor/
+
+# Local dev volumes/state that shouldn't be tracked
+/deploy/dev/data/

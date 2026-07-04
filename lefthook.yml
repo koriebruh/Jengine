@@ -1,0 +1,28 @@
+# Local pre-commit/pre-push gate, complementing (not replacing) CI
+# (.github/workflows/ci.yml). Same underlying checks as `make lint`/`make test`
+# so there's one source of truth for what "passing" means - this just catches
+# it earlier, before a push.
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: gofmt
+      glob: "*.go"
+      run: bash -c 'out=$(gofmt -l {staged_files}); if [ -n "$out" ]; then echo "$out"; echo "run make fmt to fix"; exit 1; fi'
+
+    - name: go vet
+      glob: "*.go"
+      run: go vet ./...
+
+    - name: golangci-lint
+      glob: "*.go"
+      run: golangci-lint run ./...
+
+    - name: tenant-id check
+      glob: "internal/storage/postgres/*.go"
+      run: scripts/lint/check_tenant_id.sh
+
+pre-push:
+  jobs:
+    - name: test
+      run: go test -race ./...

@@ -1,0 +1,19 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - govet
+    - staticcheck # v2 folds gosimple/stylecheck into staticcheck - don't list them separately
+    - errcheck
+    - unused
+    - ineffassign
+
+formatters:
+  enable:
+    - gofmt
+
+# Correctness-focused only, per plans/task/core/01 Implementation Notes:
+# no strict style-only rules (line length, etc.) that would generate noise
+# unrelated to correctness once real code lands in tasks 03+. Tighten later
+# if a specific team convention needs enforcing - don't gold-plate here.

@@ -1,0 +1,4 @@
+# Placeholder - plans/task/core/11 defines the real RuleSpec shape
+# (plans/docs/04-matching-engine.md §5.1). core.Match currently ignores
+# this file entirely (see matching/core/types.go).
+rules: []

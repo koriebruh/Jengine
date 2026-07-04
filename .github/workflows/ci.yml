@@ -1,0 +1,91 @@
+name: CI
+
+# Implements the 6-stage pipeline from plans/docs/16-development-workflow.md
+# §16.5, stages 1-5 (stage 6 - image build/push, ArgoCD sync - is not wired
+# here since that deploy infra doesn't exist yet; see plans/task/core/17
+# Non-Goals). Each stage is a separate job so a failure is attributable to
+# the right stage, matching plans/task/core/17's "fail-fast, ordered" intent.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  vet-and-lint:
+    name: "1. vet + lint"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - run: go vet ./...
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+      - name: tenant-id argument check (plans/docs/01-multi-tenancy.md §2.2)
+        run: scripts/lint/check_tenant_id.sh
+
+  test:
+    name: "2. test -race"
+    runs-on: ubuntu-latest
+    needs: vet-and-lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - run: go test -race ./...
+
+  buf-breaking:
+    name: "3. buf breaking (proto compat)"
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: check whether any .proto files exist yet
+        id: check
+        run: |
+          if [ -z "$(find proto -name '*.proto' 2>/dev/null)" ]; then
+            echo "no .proto files yet - introduced starting plans/task/core/10 (matching engine events) and plans/task/core/15 (API layer). Skipping - not a silent omission, see plans/task/core/17 Implementation Notes on CI stage wiring."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      # NOTE: pin exact buf actions/versions once plans/task/core/10 or 15
+      # actually lands the first .proto files - unverified until then since
+      # there's nothing yet to run buf against.
+      - uses: bufbuild/buf-setup-action@v1
+        if: steps.check.outputs.skip == 'false'
+      - uses: bufbuild/buf-breaking-action@v1
+        if: steps.check.outputs.skip == 'false'
+        with:
+          against: "https://github.com/${{ github.repository }}.git#branch=main"
+
+  migration-lint:
+    name: "4. migration lint (expand-contract safety)"
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: scripts/check-migration-safety.sh
+
+  build:
+    name: "5. build all cmd/*"
+    runs-on: ubuntu-latest
+    needs: [vet-and-lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - run: go build ./cmd/...
+
+  # Stage 6 (image build/push, ArgoCD sync) intentionally not wired yet -
+  # deploy/helm is a placeholder as of plans/task/core/01. Add a deploy job
+  # here once that infrastructure actually exists, per plans/task/core/17
+  # Non-Goals ("wire a clearly-marked placeholder stage rather than
+  # inventing deploy infra that belongs to a different task's scope").
