@@ -2,6 +2,15 @@ package core
 
 import "github.com/shopspring/decimal"
 
+// MaxGroupSizeCap is the MVP hard ceiling on CompiledRule.MaxGroupSize,
+// documented in exactly one place so plans/task/core/11's DSL compiler
+// (which clamps a tenant-authored aggregation_rules.max_group_size
+// against it) and this package's own FindGroup default stay consistent -
+// plans/task/core/10 Implementation Notes calls for "MVP default small,
+// e.g. 5"; this is that number, named so it's never silently redefined
+// differently in two places.
+const MaxGroupSizeCap = 5
+
 // FindGroup searches candidates (already blocking-bucket-filtered, so
 // small) for a subset of size <= maxGroupSize whose summed BaseAmount
 // falls within tolerance of targetAmount - the bounded "simple one-to-
@@ -21,7 +30,7 @@ import "github.com/shopspring/decimal"
 // not combinatorial blowup.
 func FindGroup(candidates []MatchableRecord, targetAmount decimal.Decimal, tolerance ToleranceSpec, maxGroupSize int) ([]MatchableRecord, bool) {
 	if maxGroupSize <= 0 {
-		maxGroupSize = 5
+		maxGroupSize = MaxGroupSizeCap
 	}
 	if maxGroupSize > len(candidates) {
 		maxGroupSize = len(candidates)

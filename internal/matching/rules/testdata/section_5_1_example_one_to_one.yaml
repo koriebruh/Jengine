@@ -1,0 +1,37 @@
+rule:
+  name: "Bank vs GL - Standard Match (ONE_TO_ONE variant)"
+  version: 3
+  scope:
+    source: { account_group: "bank_accounts" }
+    target: { account_group: "gl_cash_accounts" }
+  match_cardinality: ONE_TO_ONE
+  keys:
+    - field: value_date
+      tolerance: { type: date_window, days: 2 }
+    - field: base_amount
+      tolerance: { type: numeric, absolute: 0.01, percent: 0.0 }
+    - field: currency
+      tolerance: exact
+  scoring:
+    - field: reference
+      method: jaro_winkler
+      weight: 0.4
+      min_similarity: 0.75
+    - field: counterparty_ref
+      method: levenshtein_normalized
+      weight: 0.3
+    - field: base_amount
+      method: numeric_closeness
+      weight: 0.2
+    - field: value_date
+      method: date_proximity
+      weight: 0.1
+  thresholds:
+    auto_match: 0.92
+    suggest: 0.65
+  aggregation_rules:
+    max_group_size: 20
+    sum_tolerance: { absolute: 0.01 }
+  execution:
+    priority: 10
+    mode: [batch, streaming]

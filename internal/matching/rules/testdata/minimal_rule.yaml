@@ -1,0 +1,16 @@
+rule:
+  name: "Minimal rule - missing optional fields"
+  version: 1
+  match_cardinality: ONE_TO_ONE
+  keys:
+    - field: currency
+      tolerance: exact
+  scoring:
+    - field: reference
+      method: exact
+      weight: 1.0
+  thresholds:
+    auto_match: 0.9
+    suggest: 0.5
+  execution:
+    priority: 1
