@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Wired into `make seed` (plans/task/core/02). Deferred-content placeholder:
-# plans/task/core/03 (schema) and plans/task/core/07 (MT940 sample
-# connector) populate real fixture-loading logic here. The `make seed`
-# target itself does not need to change when that happens.
+# Wired into `make seed` (plans/task/core/02). Real content lands here per
+# plans/task/core/07: loads scripts/seed-data/incoming/sample.sta through
+# the SFTP+MT940 connector path (docker-compose's sftp service) into the
+# local dev stack, producing visible Statement/Transaction rows in
+# Postgres. Requires `make dev-up` to already be running.
 
-echo "no seed data yet (see plans/task/core/03 and plans/task/core/07)"
-exit 0
+export SECRET_SFTP_DEV_PASSWORD="${SFTP_PASSWORD:-jengine_dev}"
+
+go run ./cmd/ingestion-gateway -demo=seed

@@ -115,6 +115,24 @@ services:
     networks:
       - jengine-dev
 
+  # Dev-only SFTP server for plans/task/core/07's SFTP connector -
+  # `make seed` uploads/mounts a sample MT940 file here so the
+  # SFTP+MT940 ingestion path can be exercised against real infra, not a
+  # mock. atmoz/sftp is a widely-used, minimal image for exactly this
+  # (test-server) purpose - not meant to represent a real bank's SFTP
+  # setup.
+  sftp:
+    image: atmoz/sftp:latest
+    container_name: jengine-sftp
+    restart: unless-stopped
+    ports:
+      - "${SFTP_PORT:-2222}:22"
+    volumes:
+      - ./scripts/seed-data/incoming:/home/${SFTP_USER:-jengine}/incoming
+    command: ${SFTP_USER:-jengine}:${SFTP_PASSWORD:-jengine_dev}:1001:1001:incoming
+    networks:
+      - jengine-dev
+
   temporal:
     image: temporalio/auto-setup:latest
     container_name: jengine-temporal
