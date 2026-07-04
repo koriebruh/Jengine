@@ -23,15 +23,33 @@ uuid.UUID parameter nor calls tenancy.MustTenantFromContext.
 Scope is caller-controlled: point this analyzer at whichever package(s)
 constitute the repository layer (plans/task/core/05), e.g.
 "./internal/storage/postgres/...". internal/tenancy/registry.go is always
-skipped - see plans/task/core/04's RegistryRepo doc comment for why (it is
-the Tenant Registry lookup repo, which cannot itself take a "current
-tenant" parameter since its job is looking tenants up by ID/API key).`
+skipped entirely - see plans/task/core/04's RegistryRepo doc comment for
+why (it is the Tenant Registry lookup repo, which cannot itself take a
+"current tenant" parameter since its job is looking tenants up by ID/API
+key).
+
+A single method elsewhere can opt out of this check by including
+"tenantcheck:exempt" in its doc comment, followed by a reason - used
+sparingly, for two known shapes of legitimate exception:
+  - Genuinely cross-tenant infrastructure methods (e.g.
+    internal/storage/postgres's OutboxRepo.ListUnsent/MarkSent, which
+    sweep all tenants' outbox rows and must run against an
+    RLS-bypassing connection, not a tenant-scoped one).
+  - Methods whose signature is fixed by an unrelated interface this
+    type must implement (e.g. internal/storage/postgres's
+    PersistEmitStage.Name/Process, which satisfy
+    internal/ingestion/pipeline.Stage - tenant scoping there happens
+    via a struct field used inside a WithTx call, not a method
+    parameter, because the Stage interface itself has no room for one).
+See plans/task/core/06.`
 
 var Analyzer = &analysis.Analyzer{
 	Name: "tenantcheck",
 	Doc:  doc,
 	Run:  run,
 }
+
+const exemptMarker = "tenantcheck:exempt"
 
 func run(pass *analysis.Pass) (interface{}, error) {
 	for _, file := range pass.Files {
@@ -49,6 +67,9 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				continue
 			}
 			if !fn.Name.IsExported() {
+				continue
+			}
+			if fn.Doc != nil && strings.Contains(fn.Doc.Text(), exemptMarker) {
 				continue
 			}
 			checkFunc(pass, fn)

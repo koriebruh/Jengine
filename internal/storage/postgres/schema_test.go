@@ -2,11 +2,8 @@ package postgres_test
 
 import (
 	"context"
-	"net/url"
 	"testing"
 	"time"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/koriebruh/Jengine/internal/testutil"
 )
@@ -120,7 +117,7 @@ func TestMigrations_SchemaAndRLS(t *testing.T) {
 		// would trivially "pass" while proving nothing (this exact mistake
 		// was made and caught manually during plans/task/core/03
 		// verification against the docker-compose dev stack).
-		appPool := appRolePool(t, ctx, db.DSN)
+		appPool := testutil.AppRolePool(t, ctx, db.DSN)
 		defer appPool.Close()
 
 		const tenantA = "11111111-1111-1111-1111-111111111111"
@@ -169,24 +166,4 @@ func TestMigrations_SchemaAndRLS(t *testing.T) {
 			t.Errorf("RLS FAILED TO ISOLATE TENANTS: expected tenant B to see 0 rows (tenant A's data must not be visible), got %d", countAsB)
 		}
 	})
-}
-
-// appRolePool builds a pool connected as jengine_app (the non-superuser,
-// non-BYPASSRLS role migrations/0001_init_schema.up.sql creates) against
-// the same container the superuser DSN points at, by swapping credentials
-// in an otherwise-identical connection string.
-func appRolePool(t *testing.T, ctx context.Context, superuserDSN string) *pgxpool.Pool {
-	t.Helper()
-
-	u, err := url.Parse(superuserDSN)
-	if err != nil {
-		t.Fatalf("failed to parse superuser DSN: %v", err)
-	}
-	u.User = url.UserPassword("jengine_app", "jengine_app_dev")
-
-	pool, err := pgxpool.New(ctx, u.String())
-	if err != nil {
-		t.Fatalf("failed to create jengine_app pool: %v", err)
-	}
-	return pool
 }

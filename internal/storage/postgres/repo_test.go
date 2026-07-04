@@ -34,7 +34,7 @@ func TestRepositories_CRUD(t *testing.T) {
 		t.Fatalf("seed tenant failed: %v", err)
 	}
 
-	appPool := appRolePool(t, ctx, db.DSN)
+	appPool := testutil.AppRolePool(t, ctx, db.DSN)
 	defer appPool.Close()
 
 	tenantCtx := tenancy.WithTenant(ctx, tenancy.TenantContext{TenantID: tenantID})
@@ -427,7 +427,7 @@ func TestTransactionRepo_BulkInsert(t *testing.T) {
 		t.Fatalf("seed account failed: %v", err)
 	}
 
-	appPool := appRolePool(t, ctx, db.DSN)
+	appPool := testutil.AppRolePool(t, ctx, db.DSN)
 	defer appPool.Close()
 
 	tenantCtx := tenancy.WithTenant(ctx, tenancy.TenantContext{TenantID: tenantID})
@@ -508,7 +508,7 @@ func TestRepository_CrossTenantReadBlocked(t *testing.T) {
 		t.Fatalf("seed account failed: %v", err)
 	}
 
-	appPool := appRolePool(t, ctx, db.DSN)
+	appPool := testutil.AppRolePool(t, ctx, db.DSN)
 	defer appPool.Close()
 
 	accountRepo := postgres.NewAccountRepo()

@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"context"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -73,6 +74,28 @@ func StartPostgres(t *testing.T) *TestDB {
 	t.Cleanup(pool.Close)
 
 	return &TestDB{DSN: dsn, Pool: pool}
+}
+
+// AppRolePool builds a pool connected as jengine_app (the non-superuser,
+// non-BYPASSRLS role migrations/0001_init_schema.up.sql creates) against
+// the same container superuserDSN points at, by swapping credentials in
+// an otherwise-identical connection string. Shared across every test
+// package that needs to exercise RLS as the real application role rather
+// than the testcontainer's superuser bootstrap user.
+func AppRolePool(t *testing.T, ctx context.Context, superuserDSN string) *pgxpool.Pool {
+	t.Helper()
+
+	u, err := url.Parse(superuserDSN)
+	if err != nil {
+		t.Fatalf("failed to parse superuser DSN: %v", err)
+	}
+	u.User = url.UserPassword("jengine_app", "jengine_app_dev")
+
+	pool, err := pgxpool.New(ctx, u.String())
+	if err != nil {
+		t.Fatalf("failed to create jengine_app pool: %v", err)
+	}
+	return pool
 }
 
 // TestRedis wraps a running Redis testcontainer and a ready-to-use client.
