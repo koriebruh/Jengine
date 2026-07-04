@@ -3,6 +3,7 @@ package pipeline
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"runtime"
 
 	"github.com/google/uuid"
@@ -117,7 +118,17 @@ func (p *Pipeline) ProcessOne(ctx context.Context, raw connector.RawRecord) Reco
 				reason = err.Error()
 			}
 			if p.Quarantine != nil {
-				_ = p.Quarantine.Quarantine(ctx, raw.TenantID, raw.ConnectorID, stage.Name(), reason, raw.Payload)
+				if qerr := p.Quarantine.Quarantine(ctx, raw.TenantID, raw.ConnectorID, stage.Name(), reason, raw.Payload); qerr != nil {
+					// A failure to WRITE the quarantine entry is the one
+					// case that can turn "quarantined" into "silently
+					// dropped" - plans/docs/02-data-ingestion.md §3.3 is
+					// explicit that must never happen, so this is always
+					// logged, not swallowed like a normal per-record
+					// failure.
+					slog.ErrorContext(ctx, "pipeline: failed to write quarantine entry - record may be lost",
+						"tenant_id", raw.TenantID, "connector_id", raw.ConnectorID,
+						"stage", stage.Name(), "reason", reason, "error", qerr)
+				}
 			}
 			return outcome
 		case StageDrop:

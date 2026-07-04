@@ -38,11 +38,12 @@ type StageError struct {
 
 // PipelineRecord is threaded through every stage, progressively enriched.
 type PipelineRecord struct {
-	Raw          connector.RawRecord
-	ParsedFields map[string]any   // after Format Parse (stage 2)
-	MappedFields map[string]any   // after Field Mapping (stage 3, task 08's DSL output)
-	Normalized   NormalizedFields // after Normalization (stage 4, task 08)
-	Errors       []StageError
+	Raw            connector.RawRecord
+	ParsedFields   map[string]any   // after Format Parse (stage 2)
+	MappedFields   map[string]any   // after Field Mapping (stage 3, task 08's DSL output)
+	Normalized     NormalizedFields // after Normalization (stage 4, task 08)
+	IdempotencyKey string           // after Dedup (stage 6, task 09) - the computed key, stored on the persisted Transaction row
+	Errors         []StageError
 }
 
 // StageResult tells the pipeline what to do with a record after a stage

@@ -107,3 +107,14 @@ type FXRateRepository interface {
 	Upsert(ctx context.Context, tenantID uuid.UUID, r FXRate) (FXRate, error)
 	Get(ctx context.Context, tenantID uuid.UUID, fromCurrency, toCurrency string) (FXRate, error)
 }
+
+// IngestionDedupRepository is the authoritative dedup guard
+// (plans/task/core/09) - correctness rests on the underlying UNIQUE
+// (tenant_id, idempotency_key) constraint, not on any in-process check.
+type IngestionDedupRepository interface {
+	// TryInsert reports whether this call actually inserted the row
+	// (true) or a row with the same idempotency_key already existed
+	// (false, ON CONFLICT DO NOTHING) - never a in-process check-then-
+	// insert race (plans/task/core/09 Common Pitfalls).
+	TryInsert(ctx context.Context, tenantID uuid.UUID, idempotencyKey string, connectorID uuid.UUID, batchID string) (bool, error)
+}

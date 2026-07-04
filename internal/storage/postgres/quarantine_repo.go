@@ -5,8 +5,11 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/koriebruh/Jengine/internal/ingestion"
+	"github.com/koriebruh/Jengine/internal/ingestion/pipeline"
+	"github.com/koriebruh/Jengine/internal/tenancy"
 )
 
 // QuarantineRepo implements ingestion.QuarantineSink.
@@ -66,3 +69,28 @@ func (r *QuarantineRepo) List(ctx context.Context, tenantID uuid.UUID, connector
 }
 
 var _ ingestion.QuarantineSink = (*QuarantineRepo)(nil)
+
+// PipelineQuarantineSink adapts QuarantineRepo for direct use as
+// pipeline.Pipeline.Quarantine - pipeline.Pipeline.ProcessOne calls
+// Quarantine directly with whatever ctx was passed to Run, outside any
+// ambient transaction (the same gap every other Stage needing DB access
+// in this pipeline has - see PersistEmitStage, mapping.MappingEngine,
+// connector/csvupload and connector/sftp's TxRunner), so this adapter
+// opens its own short-lived transaction rather than requiring the caller
+// to have already wrapped ctx.
+type PipelineQuarantineSink struct {
+	repo *QuarantineRepo
+	pool *pgxpool.Pool
+}
+
+func NewPipelineQuarantineSink(pool *pgxpool.Pool) *PipelineQuarantineSink {
+	return &PipelineQuarantineSink{repo: NewQuarantineRepo(), pool: pool}
+}
+
+func (s *PipelineQuarantineSink) Quarantine(ctx context.Context, tenantID, connectorID uuid.UUID, stage, reason string, payload []byte) error {
+	return WithTx(tenancy.WithTenant(ctx, tenancy.TenantContext{TenantID: tenantID}), s.pool, tenantID, func(ctx context.Context) error {
+		return s.repo.Quarantine(ctx, tenantID, connectorID, stage, reason, payload)
+	})
+}
+
+var _ pipeline.QuarantineSink = (*PipelineQuarantineSink)(nil)

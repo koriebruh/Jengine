@@ -143,11 +143,23 @@ func iso4217Validate(ctx TransformContext, value any, args ...string) (any, erro
 	if !ok {
 		return nil, fmt.Errorf("iso4217_validate: expected a string, got %T", value)
 	}
-	s = strings.ToUpper(strings.TrimSpace(s))
-	if !iso4217Currencies[s] {
-		return nil, fmt.Errorf("iso4217_validate: %q is not a recognized ISO 4217 currency code", s)
+	if err := ValidateISO4217(s); err != nil {
+		return nil, err
 	}
-	return s, nil
+	return strings.ToUpper(strings.TrimSpace(s)), nil
+}
+
+// ValidateISO4217 checks code against the same currency set the
+// iso4217_validate transform uses - exported so other packages (e.g.
+// plans/task/core/09's schema validation) reuse this instead of
+// reimplementing currency validation (plans/task/core/09 Implementation
+// Notes).
+func ValidateISO4217(code string) error {
+	s := strings.ToUpper(strings.TrimSpace(code))
+	if !iso4217Currencies[s] {
+		return fmt.Errorf("iso4217_validate: %q is not a recognized ISO 4217 currency code", s)
+	}
+	return nil
 }
 
 // dateTokenReplacer translates a tenant-facing token vocabulary

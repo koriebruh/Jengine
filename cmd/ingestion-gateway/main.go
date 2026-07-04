@@ -21,22 +21,26 @@ import (
 	"github.com/robfig/cron/v3"
 	"github.com/shopspring/decimal"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/koriebruh/Jengine/internal/domain"
 	"github.com/koriebruh/Jengine/internal/ingestion"
 	"github.com/koriebruh/Jengine/internal/ingestion/connector"
 	"github.com/koriebruh/Jengine/internal/ingestion/connector/csvupload"
 	"github.com/koriebruh/Jengine/internal/ingestion/connector/sftp"
 	"github.com/koriebruh/Jengine/internal/ingestion/connector/testconnector"
+	"github.com/koriebruh/Jengine/internal/ingestion/dedup"
 	"github.com/koriebruh/Jengine/internal/ingestion/kafka"
 	"github.com/koriebruh/Jengine/internal/ingestion/mapping"
 	"github.com/koriebruh/Jengine/internal/ingestion/objectstore"
 	"github.com/koriebruh/Jengine/internal/ingestion/pipeline"
+	"github.com/koriebruh/Jengine/internal/ingestion/validation"
 	"github.com/koriebruh/Jengine/internal/storage/postgres"
 	"github.com/koriebruh/Jengine/internal/tenancy"
 )
 
 func main() {
-	demo := flag.String("demo", "seed", "which demo to run: \"seed\" (SFTP+MT940 sample file, default; used by `make seed`), \"fake\" (plans/task/core/06's fake-connector pipeline demo), or \"poll\" (start the cron dispatcher and block, polling the seed SFTP connector on a schedule)")
+	demo := flag.String("demo", "seed", "which demo to run: \"seed\" (SFTP+MT940 sample file, default; used by `make seed`), \"fake\" (plans/task/core/06's fake-connector pipeline demo), \"poll\" (start the cron dispatcher and block, polling the seed SFTP connector on a schedule), or \"malformed-csv\" (plans/task/core/09 manual verification: a CSV row missing currency is quarantined, not crashed on or silently dropped)")
 	flag.Parse()
 
 	var err error
@@ -45,6 +49,8 @@ func main() {
 		err = runFakeConnectorDemo()
 	case "poll":
 		err = runPollDemo()
+	case "malformed-csv":
+		err = runMalformedCSVDemo()
 	default:
 		err = runSFTPMT940Seed()
 	}
@@ -274,6 +280,13 @@ func runSFTPMT940Seed() error {
 		return fmt.Errorf("registry.New(sftp_mt940): %w", err)
 	}
 
+	redisAddr := envOrDefault("REDIS_ADDR", "localhost:6379")
+	rdb := redis.NewClient(&redis.Options{Addr: redisAddr})
+	defer func() { _ = rdb.Close() }()
+	bloom := dedup.NewRedisBloomFilter(rdb, "dedup:bloom", 10_000, 0.01)
+	dedupRepo := postgres.NewIngestionDedupRepo()
+	quarantineSink := postgres.NewPipelineQuarantineSink(superuserPool)
+
 	pl := &pipeline.Pipeline{
 		Stages: []pipeline.Stage{
 			formatParseStage{},
@@ -283,13 +296,18 @@ func runSFTPMT940Seed() error {
 				Accounts: accountRepo, FXRates: fxRateRepo,
 				TxRunner: newTxRunner(appPool),
 			},
-			passthroughStage{"validation"},
-			passthroughStage{"dedup"},
+			&validation.ValidationStage{AccountID: accountID},
+			&dedup.DedupStage{
+				TenantID: tenantID, ConnectorID: connectorID,
+				Bloom: bloom, Transactions: txRepo, Dedup: dedupRepo,
+				TxRunner: newTxRunner(appPool),
+			},
 			&postgres.PersistEmitStage{
 				Pool: appPool, TenantID: tenantID, Outbox: outboxRepo,
 				Persist: canonicalizePersistFn(txRepo, tenantID, accountID),
 			},
 		},
+		Quarantine: quarantineSink,
 		OnRecordProcessed: func(o pipeline.RecordOutcome) {
 			log.Printf("seed: record outcome: quarantined=%v dropped=%v stages=%v err=%v", o.Quarantined, o.Dropped, o.StageOrder, o.Err)
 		},
@@ -313,6 +331,142 @@ func runSFTPMT940Seed() error {
 	if txCount == 0 {
 		return fmt.Errorf("seed produced 0 transaction rows - check the sftp service is up (docker compose up -d sftp) and scripts/seed-data/incoming/sample.sta is mounted")
 	}
+	return nil
+}
+
+// inMemoryObjectStore is a trivial csvupload.ObjectStore for
+// runMalformedCSVDemo - no MinIO round trip needed to demonstrate the
+// quarantine path.
+type inMemoryObjectStore struct{ files map[string][]byte }
+
+func (s *inMemoryObjectStore) Get(ctx context.Context, bucket, key string) ([]byte, error) {
+	return s.files[bucket+"/"+key], nil
+}
+
+// runMalformedCSVDemo is plans/task/core/09's manual verification: a CSV
+// row missing the required currency column must be quarantined (a real,
+// queryable quarantine_entries row), never crash the process and never
+// be silently dropped.
+func runMalformedCSVDemo() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	superuserDSN := envOrDefault("DATABASE_URL", "postgres://jengine:jengine_dev@localhost:5432/jengine?sslmode=disable")
+	appDSN := envOrDefault("APP_DATABASE_URL", "postgres://jengine_app:jengine_app_dev@localhost:5432/jengine?sslmode=disable")
+
+	superuserPool, err := pgxpool.New(ctx, superuserDSN)
+	if err != nil {
+		return fmt.Errorf("connect as superuser: %w", err)
+	}
+	defer superuserPool.Close()
+
+	appPool, err := pgxpool.New(ctx, appDSN)
+	if err != nil {
+		return fmt.Errorf("connect as jengine_app: %w", err)
+	}
+	defer appPool.Close()
+
+	tenantID := uuid.New()
+	accountID := uuid.New()
+	connectorID := uuid.New()
+	if _, err := superuserPool.Exec(ctx,
+		`INSERT INTO tenants (id, name, isolation_tier, region, status) VALUES ($1, 'malformed-csv-demo', 'STANDARD', 'us-east', 'ACTIVE')`,
+		tenantID,
+	); err != nil {
+		return fmt.Errorf("seed tenant: %w", err)
+	}
+	if _, err := superuserPool.Exec(ctx,
+		`INSERT INTO accounts (id, tenant_id, external_account_ref, account_type, currency, name) VALUES ($1, $2, 'ACC-MALFORMED', 'BANK', 'USD', 'Malformed CSV Demo Account')`,
+		accountID, tenantID,
+	); err != nil {
+		return fmt.Errorf("seed account: %w", err)
+	}
+	if _, err := superuserPool.Exec(ctx,
+		`INSERT INTO connectors (id, tenant_id, type, status) VALUES ($1, $2, 'csv', 'ACTIVE')`,
+		connectorID, tenantID,
+	); err != nil {
+		return fmt.Errorf("seed connector: %w", err)
+	}
+
+	csvSpec, err := mapping.ParseSpecYAML(mapping.CSVDefaultSpecYAML)
+	if err != nil {
+		return fmt.Errorf("parse csv default mapping spec: %w", err)
+	}
+	csvSpecJSON, err := json.Marshal(csvSpec)
+	if err != nil {
+		return fmt.Errorf("marshal csv default mapping spec: %w", err)
+	}
+	if _, err := superuserPool.Exec(ctx,
+		`INSERT INTO mapping_specs (tenant_id, source_format, version, status, spec) VALUES ($1, 'CSV', 1, 'ACTIVE', $2)`,
+		tenantID, csvSpecJSON,
+	); err != nil {
+		return fmt.Errorf("seed mapping spec: %w", err)
+	}
+
+	statementRepo := postgres.NewStatementRepo()
+	txRepo := postgres.NewTransactionRepo()
+	accountRepo := postgres.NewAccountRepo()
+	fxRateRepo := postgres.NewFXRateRepo()
+	mappingSpecRepo := postgres.NewMappingSpecRepo()
+	outboxRepo := postgres.NewOutboxRepo(superuserPool)
+	quarantineSink := postgres.NewPipelineQuarantineSink(superuserPool)
+
+	// Deliberately missing the "currency" column csv_default.yaml's
+	// mapping spec requires.
+	const malformedCSV = "amount,value_date,description\n100.00,2024-01-15,missing currency column\n"
+	store := &inMemoryObjectStore{files: map[string][]byte{"demo/malformed.csv": []byte(malformedCSV)}}
+
+	csvConn := csvupload.New(store, statementRepo, newTxRunner(appPool))
+
+	cfg := connector.ConnectorConfig{
+		TenantID: tenantID, ConnectorID: connectorID, Type: "csv",
+		Settings: mustJSON(map[string]any{
+			"bucket": "demo", "object_key": "malformed.csv", "format": "csv",
+			"account_id": accountID, "duplicate_policy": "correction",
+		}),
+	}
+
+	quarantinedCount := 0
+	pl := &pipeline.Pipeline{
+		Stages: []pipeline.Stage{
+			formatParseStage{},
+			mapping.NewEngine(mappingSpecRepo, newTxRunner(appPool)),
+			&mapping.NormalizationStage{
+				TenantID: tenantID, AccountID: accountID,
+				Accounts: accountRepo, FXRates: fxRateRepo, TxRunner: newTxRunner(appPool),
+			},
+			&validation.ValidationStage{AccountID: accountID},
+			&postgres.PersistEmitStage{
+				Pool: appPool, TenantID: tenantID, Outbox: outboxRepo,
+				Persist: canonicalizePersistFn(txRepo, tenantID, accountID),
+			},
+		},
+		Quarantine: quarantineSink,
+		OnRecordProcessed: func(o pipeline.RecordOutcome) {
+			if o.Quarantined {
+				quarantinedCount++
+			}
+			log.Printf("malformed-csv: record outcome: quarantined=%v stages=%v err=%v", o.Quarantined, o.StageOrder, o.Err)
+		},
+	}
+
+	runCtx := tenancy.WithTenant(ctx, tenancy.TenantContext{TenantID: tenantID})
+	if err := pl.Run(runCtx, csvConn, cfg); err != nil {
+		return fmt.Errorf("pipeline run: %w", err)
+	}
+
+	if quarantinedCount == 0 {
+		return fmt.Errorf("expected the malformed row to be quarantined, but no record was reported as quarantined")
+	}
+
+	var reason string
+	if err := superuserPool.QueryRow(ctx,
+		`SELECT reason FROM quarantine_entries WHERE tenant_id = $1 ORDER BY occurred_at DESC LIMIT 1`,
+		tenantID,
+	).Scan(&reason); err != nil {
+		return fmt.Errorf("expected a queryable quarantine_entries row, query failed: %w", err)
+	}
+	log.Printf("malformed-csv: SUCCESS - malformed row was quarantined, not crashed on, not silently dropped. reason=%q", reason)
 	return nil
 }
 
