@@ -1,0 +1,26 @@
+{
+  "name": "jengine-cdc-transactions-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "jengine",
+    "database.password": "jengine_dev",
+    "database.dbname": "jengine",
+    "topic.prefix": "postgres",
+    "plugin.name": "pgoutput",
+    "slot.name": "jengine_cdc_transactions_slot",
+    "publication.name": "jengine_cdc_transactions_pub",
+    "publication.autocreate.mode": "filtered",
+
+    "table.include.list": "public.transactions",
+
+    "binary.handling.mode": "base64",
+    "decimal.handling.mode": "string",
+
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": false,
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": false
+  }
+}
