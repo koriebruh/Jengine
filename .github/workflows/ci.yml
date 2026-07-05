@@ -64,6 +64,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
+      - name: apply base schema migrations (scripts/migrate.sh)
+        run: |
+          go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+          scripts/migrate.sh
       - run: go test -race ./...
 
   buf-breaking:
