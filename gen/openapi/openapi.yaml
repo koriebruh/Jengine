@@ -1359,10 +1359,10 @@ components:
         id:
           type: string
           title: id
-        externalAccountRef:
+        external_account_ref:
           type: string
           title: external_account_ref
-        accountType:
+        account_type:
           type: string
           title: account_type
           description: BANK|GL|GATEWAY|CASH
@@ -1372,14 +1372,14 @@ components:
         name:
           type: string
           title: name
-        metadataJson:
+        metadata_json:
           type: string
           title: metadata_json
           description: raw jsonb, opaque to the API layer
-        createdAt:
+        created_at:
           title: created_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
-        updatedAt:
+        updated_at:
           title: updated_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: Account
@@ -1390,7 +1390,7 @@ components:
         id:
           type: string
           title: id
-        approvedBy:
+        approved_by:
           type: string
           title: approved_by
           description: must differ from the rule's created_by - maker-checker-lite
@@ -1407,7 +1407,7 @@ components:
     jengine.v1.Actor:
       type: object
       properties:
-        userId:
+        user_id:
           type: string
           title: user_id
         role:
@@ -1432,7 +1432,7 @@ components:
     jengine.v1.AddCommentResponse:
       type: object
       properties:
-        commentId:
+        comment_id:
           type: string
           title: comment_id
       title: AddCommentResponse
@@ -1461,39 +1461,39 @@ components:
         id:
           type: string
           title: id
-        accountId:
+        account_id:
           type: string
           title: account_id
-        relatedTransactionIds:
+        related_transaction_ids:
           type: array
           items:
             type: string
           title: related_transaction_ids
-        breakType:
+        break_type:
           type: string
           title: break_type
-        rootCauseCategory:
+        root_cause_category:
           type: string
           title: root_cause_category
         status:
           type: string
           title: status
-        assignedTo:
+        assigned_to:
           type: string
           title: assigned_to
         priority:
           type: string
           title: priority
-        slaDueAt:
+        sla_due_at:
           title: sla_due_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
-        openedAt:
+        opened_at:
           title: opened_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
-        resolvedAt:
+        resolved_at:
           title: resolved_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
-        amountAtRisk:
+        amount_at_risk:
           type: string
           title: amount_at_risk
           description: decimal, string-encoded
@@ -1562,7 +1562,7 @@ components:
           items:
             type: string
           title: ids
-        confirmedBy:
+        confirmed_by:
           type: string
           title: confirmed_by
       title: BulkConfirmMatchesRequest
@@ -1602,7 +1602,7 @@ components:
     jengine.v1.BulkResult:
       type: object
       properties:
-        batchOpId:
+        batch_op_id:
           type: string
           title: batch_op_id
         succeeded:
@@ -1642,7 +1642,7 @@ components:
         id:
           type: string
           title: id
-        confirmedBy:
+        confirmed_by:
           type: string
           title: confirmed_by
       title: ConfirmMatchRequest
@@ -1658,10 +1658,10 @@ components:
     jengine.v1.CreateAccountRequest:
       type: object
       properties:
-        externalAccountRef:
+        external_account_ref:
           type: string
           title: external_account_ref
-        accountType:
+        account_type:
           type: string
           title: account_type
         currency:
@@ -1670,7 +1670,7 @@ components:
         name:
           type: string
           title: name
-        metadataJson:
+        metadata_json:
           type: string
           title: metadata_json
       title: CreateAccountRequest
@@ -1686,17 +1686,17 @@ components:
     jengine.v1.CreateDraftRuleRequest:
       type: object
       properties:
-        ruleSpecYaml:
+        rule_spec_yaml:
           type: string
           title: rule_spec_yaml
           description: parsed/compiled via internal/matching/rules.ParseYAML+Compile
-        sourceAccountId:
+        source_account_id:
           type: string
           title: source_account_id
-        targetAccountId:
+        target_account_id:
           type: string
           title: target_account_id
-        createdBy:
+        created_by:
           type: string
           title: created_by
       title: CreateDraftRuleRequest
@@ -1715,15 +1715,15 @@ components:
         url:
           type: string
           title: url
-        secretRef:
+        secret_ref:
           type: string
           title: secret_ref
-        eventTypes:
+        event_types:
           type: array
           items:
             type: string
           title: event_types
-        filterExpr:
+        filter_expr:
           type: string
           title: filter_expr
       title: CreateSubscriptionRequest
@@ -1864,10 +1864,10 @@ components:
         status:
           type: string
           title: status
-        assignedTo:
+        assigned_to:
           type: string
           title: assigned_to
-        accountId:
+        account_id:
           type: string
           title: account_id
         priority:
@@ -1898,7 +1898,7 @@ components:
           type: string
           title: status
           description: empty = no filter
-        subscriptionId:
+        subscription_id:
           type: string
           title: subscription_id
         page:
@@ -1947,7 +1947,7 @@ components:
     jengine.v1.ListStatementsRequest:
       type: object
       properties:
-        accountId:
+        account_id:
           type: string
           title: account_id
         page:
@@ -2013,17 +2013,17 @@ components:
     jengine.v1.ListTransactionsRequest:
       type: object
       properties:
-        accountId:
+        account_id:
           type: string
           title: account_id
         status:
           type: string
           title: status
           description: optional filter
-        valueDateFrom:
+        value_date_from:
           title: value_date_from
           $ref: '#/components/schemas/google.protobuf.Timestamp'
-        valueDateTo:
+        value_date_to:
           title: value_date_to
           $ref: '#/components/schemas/google.protobuf.Timestamp'
         page:
@@ -2061,37 +2061,37 @@ components:
           type: string
           title: status
           description: DRAFT|ACTIVE|ARCHIVED
-        ruleSpecYaml:
+        rule_spec_yaml:
           type: string
           title: rule_spec_yaml
-        matchType:
+        match_type:
           type: string
           title: match_type
           description: EXACT|TOLERANCE|FUZZY|COMPOSITE
-        sourceAccountId:
+        source_account_id:
           type: string
           title: source_account_id
-        targetAccountId:
+        target_account_id:
           type: string
           title: target_account_id
         priority:
           type: integer
           title: priority
           format: int32
-        autoMatchThreshold:
+        auto_match_threshold:
           type: string
           title: auto_match_threshold
           description: decimal, string-encoded
-        createdBy:
+        created_by:
           type: string
           title: created_by
-        approvedBy:
+        approved_by:
           type: string
           title: approved_by
-        effectiveFrom:
+        effective_from:
           title: effective_from
           $ref: '#/components/schemas/google.protobuf.Timestamp'
-        createdAt:
+        created_at:
           title: created_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: MatchRule
@@ -2117,7 +2117,7 @@ components:
         token:
           type: string
           title: token
-        expiresAt:
+        expires_at:
           title: expires_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: MintStreamTokenResponse
@@ -2135,7 +2135,7 @@ components:
           type: integer
           title: nanos
           format: int32
-        currencyCode:
+        currency_code:
           type: string
           title: currency_code
       title: Money
@@ -2150,11 +2150,11 @@ components:
     jengine.v1.PageRequest:
       type: object
       properties:
-        pageSize:
+        page_size:
           type: integer
           title: page_size
           format: int32
-        pageToken:
+        page_token:
           type: string
           title: page_token
       title: PageRequest
@@ -2165,7 +2165,7 @@ components:
     jengine.v1.PageResponse:
       type: object
       properties:
-        nextPageToken:
+        next_page_token:
           type: string
           title: next_page_token
       title: PageResponse
@@ -2197,7 +2197,7 @@ components:
         id:
           type: string
           title: id
-        rejectedBy:
+        rejected_by:
           type: string
           title: rejected_by
         reason:
@@ -2208,7 +2208,7 @@ components:
     jengine.v1.RejectMatchResponse:
       type: object
       properties:
-        breakId:
+        break_id:
           type: string
           title: break_id
           description: the Break/Case opened from the rejected match's transactions
@@ -2242,29 +2242,29 @@ components:
         id:
           type: string
           title: id
-        accountId:
+        account_id:
           type: string
           title: account_id
-        sourceConnectorId:
+        source_connector_id:
           type: string
           title: source_connector_id
         format:
           type: string
           title: format
-        receivedAt:
+        received_at:
           title: received_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
-        periodStart:
+        period_start:
           title: period_start
           $ref: '#/components/schemas/google.protobuf.Timestamp'
-        periodEnd:
+        period_end:
           title: period_end
           $ref: '#/components/schemas/google.protobuf.Timestamp'
-        openingBalance:
+        opening_balance:
           type: string
           title: opening_balance
           description: decimal, string-encoded - never float
-        closingBalance:
+        closing_balance:
           type: string
           title: closing_balance
         status:
@@ -2274,7 +2274,7 @@ components:
         checksum:
           type: string
           title: checksum
-        createdAt:
+        created_at:
           title: created_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: Statement
@@ -2290,28 +2290,28 @@ components:
           type: string
           title: id
           description: MatchResult.ID
-        ruleId:
+        rule_id:
           type: string
           title: rule_id
-        matchType:
+        match_type:
           type: string
           title: match_type
           description: ONE_TO_ONE|ONE_TO_MANY|MANY_TO_ONE|MANY_TO_MANY
-        confidenceScore:
+        confidence_score:
           type: string
           title: confidence_score
           description: decimal, string-encoded
-        sourceTransactionIds:
+        source_transaction_ids:
           type: array
           items:
             type: string
           title: source_transaction_ids
-        targetTransactionIds:
+        target_transaction_ids:
           type: array
           items:
             type: string
           title: target_transaction_ids
-        matchedAt:
+        matched_at:
           title: matched_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: SuggestedMatch
@@ -2340,10 +2340,10 @@ components:
         id:
           type: string
           title: id
-        accountId:
+        account_id:
           type: string
           title: account_id
-        externalRef:
+        external_ref:
           type: string
           title: external_ref
         amount:
@@ -2353,19 +2353,19 @@ components:
         currency:
           type: string
           title: currency
-        baseAmount:
+        base_amount:
           type: string
           title: base_amount
-        valueDate:
+        value_date:
           title: value_date
           $ref: '#/components/schemas/google.protobuf.Timestamp'
-        bookingDate:
+        booking_date:
           title: booking_date
           $ref: '#/components/schemas/google.protobuf.Timestamp'
         description:
           type: string
           title: description
-        counterpartyRef:
+        counterparty_ref:
           type: string
           title: counterparty_ref
         side:
@@ -2376,7 +2376,7 @@ components:
           type: string
           title: status
           description: UNMATCHED|MATCHED|PARTIALLY_MATCHED|EXCEPTION
-        createdAt:
+        created_at:
           title: created_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: Transaction
@@ -2387,34 +2387,34 @@ components:
     jengine.v1.TransactionEvent:
       type: object
       properties:
-        tenantId:
+        tenant_id:
           type: string
           title: tenant_id
-        transactionId:
+        transaction_id:
           type: string
           title: transaction_id
-        accountId:
+        account_id:
           type: string
           title: account_id
-        valueDate:
+        value_date:
           title: value_date
           $ref: '#/components/schemas/google.protobuf.Timestamp'
         amount:
           title: amount
           $ref: '#/components/schemas/jengine.v1.Money'
-        externalRef:
+        external_ref:
           type: string
           title: external_ref
-        counterpartyRef:
+        counterparty_ref:
           type: string
           title: counterparty_ref
-        sourceMode:
+        source_mode:
           title: source_mode
           $ref: '#/components/schemas/jengine.v1.SourceMode'
-        idempotencyKey:
+        idempotency_key:
           type: string
           title: idempotency_key
-        rawPayload:
+        raw_payload:
           title: raw_payload
           $ref: '#/components/schemas/google.protobuf.Struct'
       title: TransactionEvent
@@ -2431,7 +2431,7 @@ components:
         id:
           type: string
           title: id
-        toStatus:
+        to_status:
           type: string
           title: to_status
         actor:
@@ -2471,16 +2471,16 @@ components:
         id:
           type: string
           title: id
-        subscriptionId:
+        subscription_id:
           type: string
           title: subscription_id
-        eventId:
+        event_id:
           type: string
           title: event_id
-        eventType:
+        event_type:
           type: string
           title: event_type
-        attemptCount:
+        attempt_count:
           type: integer
           title: attempt_count
           format: int32
@@ -2488,20 +2488,20 @@ components:
           type: string
           title: status
           description: PENDING | DELIVERED | FAILED | DEAD_LETTERED
-        lastAttemptAt:
+        last_attempt_at:
           title: last_attempt_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
-        nextAttemptAt:
+        next_attempt_at:
           title: next_attempt_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
-        responseStatus:
+        response_status:
           type: integer
           title: response_status
           format: int32
-        responseBodySnippet:
+        response_body_snippet:
           type: string
           title: response_body_snippet
-        createdAt:
+        created_at:
           title: created_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: WebhookDelivery
@@ -2518,25 +2518,25 @@ components:
         url:
           type: string
           title: url
-        secretRef:
+        secret_ref:
           type: string
           title: secret_ref
-        eventTypes:
+        event_types:
           type: array
           items:
             type: string
           title: event_types
-        filterExpr:
+        filter_expr:
           type: string
           title: filter_expr
         status:
           type: string
           title: status
           description: ACTIVE | PAUSED | DISABLED
-        createdAt:
+        created_at:
           title: created_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
-        updatedAt:
+        updated_at:
           title: updated_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: WebhookSubscription

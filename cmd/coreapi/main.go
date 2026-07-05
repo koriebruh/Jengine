@@ -150,7 +150,7 @@ func main() {
 		log.Fatalf("coreapi: new metrics: %v", err)
 	}
 	interceptor := observability.NewConnectInterceptor("coreapi", metrics)
-	handlerOpts := []connect.HandlerOption{connect.WithInterceptors(interceptor)}
+	handlerOpts := append([]connect.HandlerOption{connect.WithInterceptors(interceptor)}, apiserver.NewSnakeCaseJSONCodecs()...)
 
 	superuserPool, err := pgxpool.New(ctx, superuserDSN)
 	if err != nil {

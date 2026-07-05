@@ -21,3 +21,10 @@ plugins:
     opt:
       - path=openapi.yaml
       - features=connectrpc
+      # coreapi registers a custom JSON codec (internal/apiserver's
+      # snakeCaseJSONCodec, wired via NewSnakeCaseJSONCodecs in
+      # cmd/coreapi/main.go) that marshals with protojson's
+      # UseProtoNames - the actual wire format is snake_case (matching
+      # this repo's own .proto field names), not protobuf-JSON's
+      # camelCase default, so the generated spec must say so too.
+      - with-proto-names
