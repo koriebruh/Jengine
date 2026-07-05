@@ -4,6 +4,16 @@
 *.test
 *.out
 
+# plans/task/core/25: compiled WASM test fixtures - rebuilt on demand
+# (see internal/ingestion/wasmrunner/testdata/guest/main.go and
+# sdk/connector/testharness's own fixtures), not checked in as binaries.
+*.wasm
+
+# plans/task/core/25: the jengine-connector CLI's own compiled binary
+# (go build output, not source) - rebuild via `go build` in
+# sdk/connector/cmd/jengine-connector.
+/sdk/connector/cmd/jengine-connector/jengine-connector
+
 # Local env/secrets - never commit real values, only .env.example
 .env
 .env.local

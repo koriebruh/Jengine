@@ -2,6 +2,59 @@
 
 Holds only currently-open issues. Fix + re-verify → delete the entry, don't check it off.
 
+## TinyGo WASI guest: populating a Fetch() channel from a spawned goroutine corrupts the scheduler (documented, not yet upstream-reported)
+
+**Found in:** plans/task/core/25 (WASM connector SDK), while building
+and testing `sdk/connector`'s scaffold CLI against a real TinyGo
+0.34.0 toolchain (not a stock-Go stand-in).
+
+**Issue:** a connector's `Fetch(ctx, cfg) (<-chan api.RawRecord, error)`
+implementation that spawns a goroutine to populate its returned
+channel asynchronously (the natural Go pattern: `go func(){ ch <-
+record }()`) corrupts TinyGo's WASI cooperative/asyncify-based
+goroutine scheduler in a way that does NOT panic at the actual fault
+site. Instead it surfaces later as an unrelated `runtime.nilPanic()`
+inside TinyGo's own internal map implementation (`hashmap.go:187`),
+during a completely unrelated `encoding/json` marshal call - extremely
+confusing to diagnose from the panic alone, since debug info attributes
+it to line numbers in `wasmguest.go` far past that file's actual length.
+
+**Confirmed via direct A/B testing:** the exact same scaffolded
+connector crashed with the goroutine-populated-channel pattern and
+passed cleanly with a synchronous buffered-channel-fill pattern
+(`ch := make(chan api.RawRecord, 1); ch <- rec; close(ch); return ch,
+nil` - all before returning, no goroutine). A minimal standalone
+repro (marshaling a struct with `time.Time`+`[]byte` fields via a
+separate wazero-driving program) ruled out a generic TinyGo
+JSON-encoding bug first.
+
+**Resolution taken:** documented prominently, not worked around
+silently - `sdk/connector/wasmguest/wasmguest.go`'s `jengineFetch` doc
+comment and `sdk/connector/cmd/jengine-connector/new.go`'s
+`mainGoTemplate` (the scaffold every new connector starts from) both
+carry an explicit warning to populate the channel synchronously.
+There is no code-level guard preventing a connector author from
+writing the goroutine pattern anyway (TinyGo's compiler doesn't reject
+it, and detecting the pattern statically isn't practical) - this
+remains a real footgun for anyone hand-writing a `Fetch` outside the
+scaffold's template.
+
+**Resolution options for a human decision:**
+1. Accept as documented-limitation (current state) - the scaffold
+   template is the primary way connectors get written, and it already
+   avoids the pattern; revisit if it causes real support burden once
+   third-party connectors exist.
+2. File the finding upstream against TinyGo's WASI goroutine
+   scheduler/asyncify implementation - this looks like a genuine
+   TinyGo bug (host-call reentrancy from a spawned goroutine
+   corrupting unrelated guest state), not a misuse of this SDK's API,
+   but wasn't filed during this task since reproducing it minimally
+   outside this SDK's own harness wasn't attempted.
+
+Not resolved further here since neither option requires touching this
+task's own code further - the SDK-side mitigation (documentation +
+safe scaffold default) is already in place.
+
 ## RLS-as-jengine_app not directly exercisable across Citus worker nodes from a raw SQL session
 
 **Found in:** plans/task/core/24 (multi-tenancy full isolation tiers),
