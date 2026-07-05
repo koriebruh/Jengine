@@ -23,8 +23,20 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- application must connect as jengine_app. Password is a fixed local-dev-only
 -- value (same pattern as POSTGRES_PASSWORD in .env.example) - never used
 -- outside local dev.
-CREATE ROLE jengine_app LOGIN PASSWORD 'jengine_app_dev'
-    NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+-- Idempotent (DO block, not bare CREATE ROLE - Postgres has no CREATE
+-- ROLE IF NOT EXISTS): roles are cluster-wide, not per-database/schema,
+-- so re-running this migration set against a new Isolated Schema tier
+-- tenant's schema (plans/task/core/24 - same Postgres cluster, new
+-- schema) would otherwise fail with "role already exists" the second
+-- time onward. Found via that task's own schema-provisioning test.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'jengine_app') THEN
+        CREATE ROLE jengine_app LOGIN PASSWORD 'jengine_app_dev'
+            NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+    END IF;
+END
+$$;
 
 -- === Tenant Registry (unsharded, not tenant-owned - no RLS on these) =======
 

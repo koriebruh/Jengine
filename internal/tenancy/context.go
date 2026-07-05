@@ -17,9 +17,11 @@ const (
 )
 
 // TenantContext carries per-request tenant identity and routing info.
-// ShardID/SchemaName are present for forward-compatibility with V1 tiered
-// routing (plans/task/core/24) but unused at MVP - every tenant resolves
-// to the single local Standard-tier Postgres instance.
+// ShardID/SchemaName/ClusterDSN are populated by TenantRouter.Resolve
+// (plans/task/core/24, via WithTenantRouting) for tenants on the
+// Isolated Schema/Dedicated tiers - empty for Standard tier, which uses
+// the default connection pool (Citus's tenant_id sharding underneath
+// is transparent to callers).
 //
 // UserID/Roles/BusinessUnit (plans/task/core/23) are the actor identity
 // resolved from the JWT (empty for API-key auth, which carries no
@@ -30,10 +32,27 @@ type TenantContext struct {
 	IsolationTier IsolationTier
 	ShardID       string
 	SchemaName    string
+	ClusterDSN    string
 	Region        string
 	UserID        string
 	Roles         []string
 	BusinessUnit  string
+}
+
+// WithTenantRouting merges routing's resolved fields into tc and
+// returns a context carrying the result - plans/task/core/24's own
+// named extension point ("extend WithTenantContext... with a
+// WithTenantRouting(ctx, routing) wrapper"). Call after WithTenant once
+// TenantRouter.Resolve has run, typically right after tenancy.Middleware
+// populates the base TenantContext from JWT/API-key claims.
+func WithTenantRouting(ctx context.Context, tc TenantContext, routing TenantRouting) context.Context {
+	tc.IsolationTier = routing.IsolationTier
+	tc.SchemaName = routing.SchemaName
+	tc.ClusterDSN = routing.ClusterDSN
+	if routing.ShardKey != "" {
+		tc.ShardID = routing.ShardKey
+	}
+	return WithTenant(ctx, tc)
 }
 
 type ctxKey struct{}

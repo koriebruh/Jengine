@@ -1,0 +1,53 @@
+# plans/task/core/24: NetworkPolicy for a Dedicated-tier tenant's
+# optional dedicated k8s namespace. Templated by hand (this repo has no
+# Helm templating engine wired up yet for ANY service - matching
+# deploy/helm/matching-stream/scaledobject.yaml's own precedent of a
+# plain, manually-substituted manifest, not a templated chart) -
+# replace __TENANT_NAMESPACE__ with the tenant's actual dedicated
+# namespace before applying.
+#
+# Scope: default-deny all ingress/egress except what this tenant's own
+# workloads need (its own namespace, the shared control-plane
+# components it must still reach - e.g. the Tenant Registry DB, which
+# stays unsharded/global per §2.3 and is NOT duplicated per dedicated
+# tenant). Applying this is an infra/ops action (creating the
+# namespace, running `kubectl apply`) - not something this codebase's
+# Go binary does at runtime; ProvisionTenant's Dedicated-tier branch
+# only persists the routing config (cluster_ref) that assumes this
+# infra step already happened.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dedicated-tenant-isolation
+  namespace: __TENANT_NAMESPACE__
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Same-namespace traffic only (this tenant's own services talking
+    # to each other) plus the shared ingress gateway/control-plane
+    # namespace.
+    - from:
+        - podSelector: {}
+        - namespaceSelector:
+            matchLabels:
+              jengine.io/role: control-plane
+  egress:
+    - to:
+        - podSelector: {}
+        - namespaceSelector:
+            matchLabels:
+              jengine.io/role: control-plane
+      ports:
+        - protocol: TCP
+          port: 5432 # Tenant Registry DB (unsharded, shared - §2.3)
+        - protocol: TCP
+          port: 443
+    # DNS - required for any egress to resolve at all.
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53

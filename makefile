@@ -1,6 +1,6 @@
 .PHONY: build test lint vet fmt tidy clean lint-tenancy \
 	dev-up dev-down dev-down-volumes dev-logs migrate seed create-topics \
-	streaming-up register-connectors opa-test \
+	streaming-up register-connectors opa-test citus-up citus-down \
 	test-unit test-integration test-golden ci \
 	web-dev web-build web-lint
 
@@ -78,6 +78,16 @@ streaming-up: ## Brings up Kafka Connect + Debezium on top of the base stack (pl
 
 register-connectors: ## Registers the Debezium outbox-event-router connector (plans/task/core/18).
 	./scripts/register-debezium-connectors.sh
+
+citus-up: ## Starts the opt-in Citus cluster, registers workers, and applies migrations (plans/task/core/24).
+	docker compose --profile citus up -d
+	./scripts/citus-setup.sh
+	POSTGRES_HOST=localhost POSTGRES_PORT=$${CITUS_COORDINATOR_PORT:-5433} ./scripts/migrate.sh
+	./scripts/migrate-citus.sh
+
+citus-down: ## Stops the opt-in Citus cluster (containers only - use `docker compose --profile citus down -v` to also wipe its data, never the bare `-v` form against the whole stack).
+	docker compose --profile citus stop citus-coordinator citus-worker-1 citus-worker-2
+	docker compose --profile citus rm -f citus-coordinator citus-worker-1 citus-worker-2
 
 # --- Task 17: testing harness + CI-equivalent local run ------------------
 

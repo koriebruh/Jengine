@@ -44,10 +44,15 @@ type Claims struct {
 type Middleware struct {
 	registry  RegistryRepo
 	jwtSecret []byte
+	// router defaults to a RegistryTenantRouter over the same registry
+	// (plans/task/core/24) - nil-checked in Wrap so a zero-value
+	// Middleware{} (constructed directly rather than via NewMiddleware,
+	// e.g. in older tests) still falls back to plain WithTenant.
+	router TenantRouter
 }
 
 func NewMiddleware(registry RegistryRepo, jwtSecret []byte) *Middleware {
-	return &Middleware{registry: registry, jwtSecret: jwtSecret}
+	return &Middleware{registry: registry, jwtSecret: jwtSecret, router: NewRegistryTenantRouter(registry)}
 }
 
 // Wrap returns an http.Handler that resolves the tenant before calling
@@ -70,13 +75,18 @@ func (m *Middleware) Wrap(next http.Handler) http.Handler {
 			BusinessUnit:  act.businessUnit,
 		}
 
-		// Isolation config is optional at MVP (every tenant resolves to
-		// the single local Standard-tier Postgres instance regardless -
-		// plans/task/core/24 is where ShardID/SchemaName start mattering).
-		// Its absence is not a request failure.
-		if cfg, cfgErr := m.registry.GetIsolationConfig(r.Context(), tenant.ID); cfgErr == nil {
-			tc.ShardID = cfg.ShardID
-			tc.SchemaName = cfg.SchemaName
+		// plans/task/core/24: TenantRouter resolves ShardID/SchemaName/
+		// ClusterDSN dynamically per tier - a resolution failure is not
+		// a request failure (Standard tier, the overwhelming majority
+		// at MVP, needs no isolation-config row at all; the router
+		// itself skips that lookup for Standard - see
+		// RegistryTenantRouter.Resolve).
+		if m.router != nil {
+			if routing, routeErr := m.router.Resolve(r.Context(), tenant.ID.String()); routeErr == nil {
+				ctx := WithTenantRouting(r.Context(), tc, routing)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
 		}
 
 		ctx := WithTenant(r.Context(), tc)

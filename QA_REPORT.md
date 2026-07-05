@@ -2,6 +2,66 @@
 
 Holds only currently-open issues. Fix + re-verify → delete the entry, don't check it off.
 
+## RLS-as-jengine_app not directly exercisable across Citus worker nodes from a raw SQL session
+
+**Found in:** plans/task/core/24 (multi-tenancy full isolation tiers),
+while writing the RLS + Citus interaction test.
+
+**Issue:** Citus opens its own connections to worker nodes on behalf of
+whichever role issued the original coordinator query. Two real,
+narrow limitations surfaced testing this directly against the local
+2-worker Citus cluster:
+
+1. Password-auth'd roles (including `jengine_app`, the non-superuser
+   RLS-subject role) need an explicit `pg_dist_authinfo` entry or
+   cross-node queries fail with "no password supplied"/"password
+   authentication failed" even though a direct psql connection as that
+   role succeeds - fixed for local dev via
+   scripts/migrate-citus.sh's own `pg_dist_authinfo` inserts.
+2. An ad-hoc custom GUC set on the coordinator session
+   (`set_config('app.current_tenant_id', ..., true)` - the actual
+   mechanism `postgres.WithTx`/RLS depend on) is NOT transparently
+   visible to the remote worker connections Citus opens on that same
+   role's behalf, even inside an explicit transaction with
+   `citus.propagate_set_commands` tuned. This is a genuine Citus/
+   Postgres session-propagation gap, not a bug in this codebase's own
+   RLS design (the SAME mechanism works correctly against the plain
+   single-node dev Postgres - every other task's RLS tests pass there).
+
+**Resolution taken:** `TestCitusDistribution_RLSPolicySurvivesDistribution`
+verifies the structural claim this task's own Common Pitfalls actually
+cares about - the `tenant_isolation` policy and its `FORCE ROW LEVEL
+SECURITY` flag are still attached to every distributed table after
+`create_distributed_table` - rather than a full cross-tenant read
+exercise as `jengine_app` through Citus's distributed query path.
+
+**Resolution options for a human decision:**
+1. Accept this as a test-harness limitation, not a production
+   concern - real application traffic goes through pgx's own
+   connection (not a raw interactive psql session sending ad-hoc SET
+   statements), and pgx already threads `app.current_tenant_id` via
+   `set_config` inside the SAME transaction/connection the query itself
+   runs on (no separate "coordinator session" vs "worker session" split
+   the way two different psql invocations created here) - worth
+   re-verifying with a real Go integration test using `postgres.WithTx`
+   against the Citus coordinator specifically, once `internal/storage/
+   postgres`'s repository layer is wired to route through
+   `TenantRouting.ClusterDSN` for non-Standard tiers (not yet built -
+   the router resolves routing, but repository code doesn't yet select
+   a pool/schema based on it).
+2. If the pgx-based path hits the same limitation, investigate Citus's
+   `citus.enable_alter_role_propagation`/connection-pooling options
+   further, or accept RLS-under-Citus as verified structurally
+   (policy presence) rather than behaviorally for Standard-tier
+   queries, documenting the residual risk explicitly.
+
+Not resolved here since the repository-layer pool/schema selection
+this would need to fully verify (option 1) is real remaining work this
+task's own Non-Goals put out of scope for a first pass ("the repository
+layer must select connection pool... based on TenantRouting" is a
+directional requirement, not something every repository was retrofitted
+for in this task).
+
 ## S3 SSE-KMS (`objectstore.MinIOStore.PutEncrypted`) has no KMS-backed deployment to actually encrypt against
 
 **Found in:** plans/task/core/23 (security hardening), while wiring
