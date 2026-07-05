@@ -31,6 +31,34 @@ jobs:
     name: "2. test -race"
     runs-on: ubuntu-latest
     needs: vet-and-lint
+    # internal/tenancy's ProvisionTenant tests dial a real Postgres at a
+    # hardcoded local DSN (postgres://jengine:jengine_dev@localhost:5432/
+    # jengine - internal/tenancy/provision_test.go's own
+    # localSuperuserDSNForProvisioning constant, matching docker-compose.yaml's
+    # postgres service credentials exactly) rather than a self-contained
+    # testcontainer the way internal/ingestion/connector/sftp's tests do -
+    # that's this repo's established convention for tests needing the shared
+    # local dev-stack Postgres specifically (see also
+    # internal/platform/outbox and internal/storage/clickhouse's CDC
+    # integration tests, which skip gracefully instead of failing when their
+    # infra - Redpanda/Debezium/ClickHouse - isn't reachable; Postgres is the
+    # one dependency here that hard-fails via t.Fatalf if absent, not
+    # t.Skip). A GitHub Actions job-level service container is the
+    # equivalent of a contributor having already run `make dev-up` locally.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: jengine
+          POSTGRES_USER: jengine
+          POSTGRES_PASSWORD: jengine_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jengine -d jengine"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5

@@ -41,7 +41,17 @@ func StartSFTP(t *testing.T, hostDir string) *TestSFTP {
 		HostConfigModifier: func(hc *container.HostConfig) {
 			hc.Binds = []string{fmt.Sprintf("%s:/home/%s/upload", hostDir, user)}
 		},
-		WaitingFor: wait.ForListeningPort("22/tcp"),
+		// wait.ForListeningPort alone is racy for this image: the port
+		// accepts TCP connections briefly before sshd has finished
+		// generating host keys/chrooting the upload user, so an SSH
+		// handshake attempted right after "port open" can get a real
+		// "connection reset by peer" - reproduced on a CI runner (GitHub
+		// Actions), not just a theoretical race. atmoz/sftp's OpenSSH
+		// logs this exact line once it's actually ready to negotiate.
+		WaitingFor: wait.ForAll(
+			wait.ForListeningPort("22/tcp"),
+			wait.ForLog("Server listening on"),
+		),
 	}
 
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
