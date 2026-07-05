@@ -9,6 +9,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -19,16 +20,20 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/otel"
+	temporalclient "go.temporal.io/sdk/client"
+	temporalworker "go.temporal.io/sdk/worker"
 
 	"github.com/koriebruh/Jengine/gen/go/jengine/v1/jenginev1connect"
 	"github.com/koriebruh/Jengine/internal/apiserver"
 	"github.com/koriebruh/Jengine/internal/audit"
 	"github.com/koriebruh/Jengine/internal/cases"
+	caseworkflow "github.com/koriebruh/Jengine/internal/cases/workflow"
 	"github.com/koriebruh/Jengine/internal/ingestion/connector"
 	"github.com/koriebruh/Jengine/internal/ingestion/connector/sftp"
 	"github.com/koriebruh/Jengine/internal/ingestion/connector/webhookreceiver"
 	"github.com/koriebruh/Jengine/internal/matching/rules"
 	"github.com/koriebruh/Jengine/internal/platform/observability"
+	"github.com/koriebruh/Jengine/internal/platform/outbox"
 	"github.com/koriebruh/Jengine/internal/storage/postgres"
 	"github.com/koriebruh/Jengine/internal/tenancy"
 )
@@ -48,6 +53,56 @@ func newCasesTxRunner(pool *pgxpool.Pool) cases.TxRunner {
 		return postgres.WithTx(tenancy.WithTenant(ctx, tenancy.TenantContext{TenantID: tenantID}), pool, tenantID, fn)
 	}
 }
+
+// temporalTaskQueue is the one task queue every case.go workflow/activity
+// in this process uses - single tenant-agnostic queue at MVP (per-tenant
+// task queues would be a Dedicated-tier isolation lever, not needed yet).
+const temporalTaskQueue = "case-lifecycle"
+
+// setupTemporalWorker connects to the local dev Temporal server
+// (plans/task/core/02 - provisioned ahead of need, unused until this
+// task), registers BreakLifecycleWorkflow/ApprovalWorkflow and their
+// Activities, and starts the worker as a goroutine inside this same
+// process - plans/task/core/20's own deployment-topology note: no
+// separate cmd/case-worker binary, the task-queue poller runs alongside
+// the HTTP/Connect-RPC server started later in main().
+func setupTemporalWorker(appPool *pgxpool.Pool, txRunner cases.TxRunner, auditWriter audit.Writer) (*cases.TemporalLifecycleService, error) {
+	temporalHostPort := envOrDefault("TEMPORAL_HOSTPORT", "localhost:7233")
+	c, err := temporalclient.Dial(temporalclient.Options{HostPort: temporalHostPort})
+	if err != nil {
+		return nil, err
+	}
+
+	insertOutbox := func(ctx context.Context, tenantID uuid.UUID, aggregateID uuid.UUID, eventType, topic string, payload []byte) error {
+		tx, ok := postgres.TxFromContext(ctx)
+		if !ok {
+			return errNoTxInContext
+		}
+		return outbox.Insert(ctx, tx, tenantID, outbox.Event{
+			AggregateType: "case", AggregateID: aggregateID, EventType: eventType, Topic: topic, Payload: payload,
+		})
+	}
+
+	activities := &caseworkflow.Activities{
+		TxRunner: caseworkflow.TxRunner(txRunner), Cases: postgres.NewCaseRepo(), Audit: auditWriter,
+		Routing: postgres.NewCaseRoutingConfigRepo(), InsertOutbox: insertOutbox,
+	}
+
+	w := temporalworker.New(c, temporalTaskQueue, temporalworker.Options{})
+	w.RegisterWorkflow(caseworkflow.BreakLifecycleWorkflow)
+	w.RegisterWorkflow(caseworkflow.ApprovalWorkflow)
+	w.RegisterActivity(activities)
+
+	go func() {
+		if err := w.Run(temporalworker.InterruptCh()); err != nil {
+			log.Fatalf("coreapi: temporal worker: %v", err)
+		}
+	}()
+
+	return cases.NewTemporalLifecycleService(c, temporalTaskQueue, txRunner, postgres.NewCaseRepo()), nil
+}
+
+var errNoTxInContext = fmt.Errorf("coreapi: no pgx.Tx in context for outbox insert")
 
 func main() {
 	ctx := context.Background()
@@ -135,7 +190,19 @@ func main() {
 	}
 	mux.Handle(jenginev1connect.NewMatchRuleServiceHandler(matchRuleHandler, handlerOpts...))
 
-	lifecycle := cases.NewPostgresLifecycleService(newCasesTxRunner(appPool), postgres.NewCaseRepo(), auditWriter)
+	postgresLifecycle := cases.NewPostgresLifecycleService(newCasesTxRunner(appPool), postgres.NewCaseRepo(), auditWriter)
+
+	temporalLifecycle, err := setupTemporalWorker(appPool, newCasesTxRunner(appPool), auditWriter)
+	if err != nil {
+		log.Fatalf("coreapi: setup temporal worker: %v", err)
+	}
+
+	// plans/task/core/20: tenant-by-tenant cutover between task 13's
+	// Postgres-only lifecycle and this task's Temporal-backed one, keyed
+	// by the cases.temporal_enabled feature flag - see
+	// cases.FeatureFlagLifecycleService's own doc comment for why this
+	// isn't a single big-bang switch.
+	lifecycle := cases.NewFeatureFlagLifecycleService(registry, postgresLifecycle, temporalLifecycle)
 
 	matchReviewHandler := &apiserver.MatchReviewServiceHandler{
 		Pool: appPool, MatchResults: postgres.NewMatchResultRepo(), Transactions: postgres.NewTransactionRepo(),

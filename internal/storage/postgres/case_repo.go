@@ -151,6 +151,25 @@ func (r *CaseRepo) UpdateAssignee(ctx context.Context, tenantID uuid.UUID, id uu
 	return nil
 }
 
+func (r *CaseRepo) UpdateTemporalWorkflowID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, workflowID string) error {
+	tx, err := requireTx(ctx, tenantID)
+	if err != nil {
+		return err
+	}
+
+	tag, err := tx.Exec(ctx,
+		`UPDATE cases SET temporal_workflow_id = $1, updated_at = now() WHERE id = $2`,
+		workflowID, id,
+	)
+	if err != nil {
+		return fmt.Errorf("postgres: CaseRepo.UpdateTemporalWorkflowID: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (r *CaseRepo) AddComment(ctx context.Context, tenantID uuid.UUID, c domain.CaseComment) (domain.CaseComment, error) {
 	tx, err := requireTx(ctx, tenantID)
 	if err != nil {

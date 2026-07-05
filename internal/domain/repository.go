@@ -102,12 +102,28 @@ type CaseRepository interface {
 	// integration testing: Assign was updating status to ASSIGNED but
 	// never actually persisting who it was assigned to.
 	UpdateAssignee(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, assignee string) error
+	// UpdateTemporalWorkflowID sets temporal_workflow_id - plans/task/
+	// core/20's backfill program is the primary caller (idempotent:
+	// safe to call again with the same workflowID for an already-set
+	// row), TemporalLifecycleService.OpenBreak also sets it for
+	// newly-created cases.
+	UpdateTemporalWorkflowID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, workflowID string) error
 
 	AddComment(ctx context.Context, tenantID uuid.UUID, c CaseComment) (CaseComment, error)
 	ListComments(ctx context.Context, tenantID uuid.UUID, caseID uuid.UUID) ([]CaseComment, error)
 
 	AddAuditEvent(ctx context.Context, tenantID uuid.UUID, e CaseAuditEvent) (CaseAuditEvent, error)
 	ListAuditEvents(ctx context.Context, tenantID uuid.UUID, caseID uuid.UUID) ([]CaseAuditEvent, error)
+}
+
+// CaseRoutingConfigRepository covers CaseRoutingConfig (plans/task/core/20).
+type CaseRoutingConfigRepository interface {
+	// GetActive returns the tenant's current ACTIVE routing config, if
+	// any - AutoAssignActivity falls back to a hardcoded default
+	// strategy when none exists (no config yet is a valid, expected
+	// state for a tenant that hasn't customized routing).
+	GetActive(ctx context.Context, tenantID uuid.UUID) (CaseRoutingConfig, error)
+	Create(ctx context.Context, tenantID uuid.UUID, c CaseRoutingConfig) (CaseRoutingConfig, error)
 }
 
 type ConnectorRepository interface {
