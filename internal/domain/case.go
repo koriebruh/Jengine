@@ -17,6 +17,11 @@ const (
 	BreakTypeDuplicate           BreakType = "DUPLICATE"
 	BreakTypeFXVariance          BreakType = "FX_VARIANCE"
 	BreakTypeMissingCounterparty BreakType = "MISSING_COUNTERPARTY"
+	// BreakTypeReconciliationVariance is created by the batch/streaming
+	// reconciliation job (plans/task/core/19) when a streaming
+	// provisional match and the authoritative batch pass disagree - a
+	// deliberately lightweight review case, not a full re-investigation.
+	BreakTypeReconciliationVariance BreakType = "RECONCILIATION_VARIANCE"
 )
 
 type CaseStatus string

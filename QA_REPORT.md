@@ -2,6 +2,55 @@
 
 Holds only currently-open issues. Fix + re-verify → delete the entry, don't check it off.
 
+## No ingestion-pipeline stage publishes to `normalized.transactions.<shard>` yet
+
+**Found in:** plans/task/core/19 (streaming matching worker), while
+building `cmd/matching-stream`.
+
+**Issue:** `cmd/matching-stream` consumes `normalized.transactions.default`
+(the Kafka topic plans/task/core/18 provisioned) as its input, expecting
+`TransactionEvent` protobuf messages per plans/docs/06-streaming-architecture.md
+§7.2. But no stage in the ingestion pipeline (tasks 06-09) actually
+publishes onto this topic - the pipeline's canonicalization/persist stage
+writes directly to Postgres and stops there. `internal/ingestion/kafka.Producer`
+exists (task 06) but nothing in `internal/ingestion` calls it for
+per-transaction events; it's only exercised by `internal/ingestion`'s own
+outbox relay for a different topic (`ingestion.raw.<shard>`, the raw pre-
+normalization stage - see the "two outbox mechanisms" entry above for how
+that relates to task 18's `outbox_event`).
+
+**Current workaround:** `cmd/matching-stream -demo=publish-test-event`
+publishes synthetic `TransactionEvent` messages for manual verification
+(plans/task/core/19's own Definition of Done explicitly calls for this:
+"publish a synthetic streaming event, observe a provisional
+AUTO_MATCHED_STREAMING result") - this is what was used to verify
+`matching-stream`'s consumption side and the batch/streaming
+reconciliation end-to-end (see this task's commit message), proving the
+CONSUMER half works correctly against the documented schema, independent
+of this gap.
+
+**Impact:** `matching-stream` has nothing real to consume in an actual
+deployment until this is closed - streaming matching is built and
+verified, but dormant against real ingestion traffic.
+
+**Resolution options for a human decision:**
+1. Add a publish step to the ingestion pipeline's canonicalization/
+   persist stage (task 08/09's own code) that produces a
+   `TransactionEvent` onto `normalized.transactions.<shard>` via the SAME
+   outbox pattern task 18/19 already established (write to `outbox_event`
+   in the same transaction as the canonical `Transaction` insert) -
+   the most consistent fix, reusing the existing mechanism rather than a
+   third one.
+2. Have the persist stage produce directly via `internal/ingestion/kafka.Producer`
+   post-commit (simpler, but reintroduces the dual-write risk the outbox
+   pattern exists to avoid - not recommended without a clear reason to
+   deviate).
+
+Not resolved here since it requires touching already-committed tasks
+08/09's own pipeline code for a concern (event publishing) outside task
+19's own scope (the streaming matching worker itself, not the producer
+side).
+
 ## Webhook-receiver connector configs only load at `cmd/coreapi` startup, no live refresh
 
 **Found in:** plans/task/core/18 (streaming ingestion), while wiring the
@@ -101,6 +150,17 @@ found for a partition enumerated as `(accountB, accountA)`. This doubles
 the rule-lookup query count per partition (cheap, indexed lookups) and
 is itself a symptom of the same missing-taxonomy gap, not a separate
 issue.
+
+**Same gap inherited by the streaming worker (`internal/matching/stream`,
+plans/task/core/19):** with no `account_group`/scope representation to
+narrow by, `stream.Consumer` pools candidates per-TENANT (not per-
+account-pair) and loads every ACTIVE rule for the tenant tenant-wide
+(`MatchRuleRepository.ListByTenant`, not the account-pair-scoped
+`ListActive` the batch worker uses) rather than per account pair.
+`core.Match`'s own blocking index still filters the resulting (broader)
+candidate set correctly - same "correct but broader than necessary"
+tradeoff as the batch workaround above, not a new correctness gap. Fixing
+this (option 1 above) would narrow both workarounds at once.
 
 ## Two outbox mechanisms with overlapping intent (`ingestion_outbox` vs `outbox_event`)
 

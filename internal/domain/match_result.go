@@ -23,6 +23,17 @@ const (
 	MatchResultStatusSuggested   MatchResultStatus = "SUGGESTED"
 	MatchResultStatusConfirmed   MatchResultStatus = "CONFIRMED"
 	MatchResultStatusRejected    MatchResultStatus = "REJECTED"
+	// MatchResultStatusAutoMatchedStreaming is PROVISIONAL - written by
+	// the streaming matching worker (plans/task/core/19). Must never be
+	// treated as a final/closed match anywhere (API responses, webhooks,
+	// dashboards) without a "provisional, pending batch confirmation"
+	// qualifier - the nightly batch pass is the authoritative source of
+	// truth that reconciles it into one of:
+	MatchResultStatusAutoMatchedStreaming MatchResultStatus = "AUTO_MATCHED_STREAMING"
+	// MatchResultStatusAutoMatchedConfirmed is FINAL - the batch/
+	// streaming reconciliation job's outcome when a streaming match is
+	// concordant with the authoritative batch pass over the same data.
+	MatchResultStatusAutoMatchedConfirmed MatchResultStatus = "AUTO_MATCHED_CONFIRMED"
 )
 
 // MatchResult mirrors match_results. Kept separate from MatchResultLine

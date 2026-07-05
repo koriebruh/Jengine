@@ -1,0 +1,39 @@
+# plans/task/core/19: KEDA ScaledObject scaling matching-stream replicas
+# on consumer-group lag (plans/docs/06-streaming-architecture.md §7.4).
+# Assumes KEDA is already installed on the target cluster (plans/task/
+# core/19 Non-Goals: "Do not install or configure a KEDA/Kubernetes
+# cluster from scratch") and that a matching-stream Deployment (not
+# included here - this repo has no Deployment manifests yet for ANY
+# service; add one when a real k8s rollout is wired up) exists in the
+# same namespace under the name below.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: matching-stream
+  namespace: jengine
+spec:
+  scaleTargetRef:
+    name: matching-stream
+  minReplicaCount: 1
+  maxReplicaCount: 20
+  # Consumer-group lag is a slow-moving signal relative to typical HPA
+  # polling - avoid thrashing replica count up/down on transient bursts.
+  cooldownPeriod: 120
+  pollingInterval: 15
+  triggers:
+    - type: kafka
+      metadata:
+        # Redpanda is Kafka-API-compatible - the "kafka" KEDA scaler
+        # trigger works unmodified (plans/docs/00-overview-and-architecture.md
+        # §1.3's rationale for choosing Redpanda over a NATS-based
+        # alternative: protocol compatibility with the existing Kafka
+        # ecosystem, including scaler/tooling like this one).
+        bootstrapServers: redpanda.jengine.svc.cluster.local:9092
+        consumerGroup: matching-stream
+        topic: normalized.transactions.default
+        # Scale up once average lag per partition crosses this
+        # threshold - tune against real p99 latency SLOs once
+        # observed; this is a starting point, not a derived constant.
+        lagThreshold: "1000"
+        activationLagThreshold: "10"
+        allowIdleConsumers: "false"

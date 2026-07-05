@@ -94,7 +94,7 @@ type AggregationSpec struct {
 
 type ExecutionSpec struct {
 	Priority int      `yaml:"priority" json:"priority"`
-	Mode     []string `yaml:"mode" json:"mode"` // ["batch"] and/or ["streaming"] - preserved for task 19's filter, unused until then
+	Mode     []string `yaml:"mode" json:"mode"` // ["batch"] and/or ["streaming"] - compiled into core.CompiledRule.ExecutionModes, filtered by internal/matching/stream (plans/task/core/19)
 }
 
 // RuleSpec mirrors plans/docs/04-matching-engine.md §5.1's YAML shape
@@ -185,6 +185,7 @@ func Compile(spec RuleSpec, registry core.ScoringRegistry) (core.CompiledRule, e
 		SuggestThresh:   r.Thresholds.Suggest,
 		Priority:        r.Execution.Priority,
 		MaxGroupSize:    maxGroupSize,
+		ExecutionModes:  r.Execution.Mode,
 	}, nil
 }
 

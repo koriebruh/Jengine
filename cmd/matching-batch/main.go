@@ -26,6 +26,7 @@ import (
 	"github.com/koriebruh/Jengine/internal/audit"
 	"github.com/koriebruh/Jengine/internal/cases"
 	"github.com/koriebruh/Jengine/internal/matching/batch"
+	"github.com/koriebruh/Jengine/internal/matching/reconcile"
 	"github.com/koriebruh/Jengine/internal/matching/rules"
 	"github.com/koriebruh/Jengine/internal/platform/observability"
 	"github.com/koriebruh/Jengine/internal/storage/postgres"
@@ -126,7 +127,29 @@ func newBreakSink(appPool *pgxpool.Pool) *cases.BreakSinkAdapter {
 	return cases.NewBreakSinkAdapter(lifecycle)
 }
 
+// newReconciler wires plans/task/core/19's batch/streaming hybrid
+// reconciliation job as WorkerDeps.PostWrite, so a real batch pass over
+// a partition also reconciles against any provisional
+// AUTO_MATCHED_STREAMING results cmd/matching-stream wrote for the same
+// transactions - the "run a batch pass ... observe promotion to
+// AUTO_MATCHED_CONFIRMED" half of task 19's manual verification.
+func newReconciler(appPool *pgxpool.Pool) *reconcile.Reconciler {
+	txRunner := reconcile.TxRunner(newTxRunner(appPool))
+	lifecycle := cases.NewPostgresLifecycleService(
+		cases.TxRunner(newTxRunner(appPool)),
+		postgres.NewCaseRepo(),
+		audit.NewPostgresWriter(),
+	)
+	return &reconcile.Reconciler{
+		Deps: reconcile.Deps{
+			TxRunner: txRunner, MatchResults: postgres.NewMatchResultRepo(),
+			Cases: postgres.NewCaseRepo(), Lifecycle: lifecycle,
+		},
+	}
+}
+
 func newWorkerDeps(appPool *pgxpool.Pool) batch.WorkerDeps {
+	reconciler := newReconciler(appPool)
 	return batch.WorkerDeps{
 		TxRunner:     newTxRunner(appPool),
 		Transactions: postgres.NewTransactionRepo(),
@@ -134,6 +157,7 @@ func newWorkerDeps(appPool *pgxpool.Pool) batch.WorkerDeps {
 		MatchRules:   postgres.NewMatchRuleRepo(),
 		Registry:     rules.DefaultRegistry(),
 		BreakSink:    newBreakSink(appPool),
+		PostWrite:    reconciler.ReconcileBatchAgainstStream,
 	}
 }
 

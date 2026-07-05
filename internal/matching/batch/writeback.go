@@ -87,6 +87,16 @@ func WriteResults(ctx context.Context, deps WorkerDeps, tenantID uuid.UUID, outc
 			return fmt.Errorf("batch: open break for transaction %s: %w", id, err)
 		}
 	}
+
+	// Fired after every write above (MatchResults, Transaction.status,
+	// Breaks) completes - plans/task/core/19's reconciliation hook, see
+	// WorkerDeps.PostWrite's own doc comment. Optional; most callers
+	// (including every test predating task 19) leave it nil.
+	if deps.PostWrite != nil {
+		if err := deps.PostWrite(ctx, tenantID, outcome, txByID); err != nil {
+			return fmt.Errorf("batch: post-write reconciliation hook: %w", err)
+		}
+	}
 	return nil
 }
 

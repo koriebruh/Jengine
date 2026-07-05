@@ -98,6 +98,27 @@ type CompiledRule struct {
 	SuggestThresh   float64           `yaml:"suggest_threshold" json:"suggest_threshold"`
 	Priority        int               `yaml:"priority" json:"priority"`             // lower runs first
 	MaxGroupSize    int               `yaml:"max_group_size" json:"max_group_size"` // one-to-many bound; MVP hard cap, see grouping.go
+	// ExecutionModes is the rule DSL's execution.mode list ("batch" and/or
+	// "streaming", plans/docs/04-matching-engine.md §5.1) - parsed since
+	// plans/task/core/11 but left uncompiled ("preserved for task 19's
+	// filter") until plans/task/core/19 needed it to decide which rules
+	// the streaming worker may run. Match itself doesn't read this field -
+	// filtering happens at the caller level (batch: all rules; streaming:
+	// only rules where this slice contains "streaming").
+	ExecutionModes []string `yaml:"execution_modes" json:"execution_modes"`
+}
+
+// SupportsStreaming reports whether r's execution.mode list includes
+// "streaming" - internal/matching/stream's consumer filters compiled
+// rules through this before running them, per plans/task/core/19's
+// "Only rules with execution.mode including streaming run in this path."
+func (r CompiledRule) SupportsStreaming() bool {
+	for _, m := range r.ExecutionModes {
+		if m == "streaming" {
+			return true
+		}
+	}
+	return false
 }
 
 // ScoredCandidate is one candidate match Match produced, whether it

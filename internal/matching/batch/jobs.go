@@ -70,6 +70,15 @@ type WorkerDeps struct {
 	MatchRules   domain.MatchRuleRepository
 	Registry     core.ScoringRegistry
 	BreakSink    core.BreakSink
+	// PostWrite is fired once per partition, after WriteResults commits
+	// its MatchResult/Transaction-status writes and opens any Breaks -
+	// the hook plans/task/core/19's batch/streaming reconciliation job
+	// (internal/matching/reconcile.Reconciler.ReconcileBatchAgainstStream)
+	// wires in, so a batch pass over a partition can reconcile against
+	// any provisional streaming matches touching the same transactions.
+	// Optional - nil is a normal, valid configuration (e.g. before task
+	// 19 existed, or in tests that don't need reconciliation).
+	PostWrite func(ctx context.Context, tenantID uuid.UUID, outcome core.MatchOutcome, txByID map[uuid.UUID]domain.Transaction) error
 }
 
 // PartitionWorker implements river.Worker[PartitionJobArgs] - the actual
