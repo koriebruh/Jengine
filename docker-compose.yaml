@@ -266,6 +266,25 @@ services:
     networks:
       - jengine-dev
 
+  # Browsable Swagger UI for gen/openapi/openapi.yaml (plans/task/core/15's
+  # Connect-RPC API surface, spec generation wired in the "feat: generate
+  # OpenAPI/Swagger spec" commit) - the spec file existing on disk isn't
+  # the same as it being visible anywhere; this is that visibility.
+  # Re-run `make proto-gen` after editing any .proto, then just refresh
+  # the page - no container restart needed, the spec is bind-mounted.
+  swagger-ui:
+    image: swaggerapi/swagger-ui:latest
+    container_name: jengine-swagger-ui
+    restart: unless-stopped
+    environment:
+      SWAGGER_JSON: /openapi/openapi.yaml
+    ports:
+      - "${SWAGGER_UI_PORT:-8082}:8080"
+    volumes:
+      - ./gen/openapi:/openapi:ro
+    networks:
+      - jengine-dev
+
   temporal:
     image: temporalio/auto-setup:latest
     container_name: jengine-temporal
