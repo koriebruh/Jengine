@@ -2,6 +2,44 @@
 
 Holds only currently-open issues. Fix + re-verify → delete the entry, don't check it off.
 
+## Webhook-receiver connector configs only load at `cmd/coreapi` startup, no live refresh
+
+**Found in:** plans/task/core/18 (streaming ingestion), while wiring the
+webhook-receiver connector's HTTP mount into `cmd/coreapi`.
+
+**Issue:** `webhookreceiver.Connector` needs each tenant's webhook
+connector config registered (via `.Fetch(ctx, cfg)`) before it can route
+an incoming request by `connector_id`. `cmd/coreapi/main.go`'s
+`loadWebhookConnectors` does this once, at process startup, via a raw
+`SELECT ... FROM connectors WHERE type = 'webhook' AND status = 'ACTIVE'`
+query. A webhook connector created (or reactivated) *after* the process
+starts is invisible until the next restart - there's no
+ConnectorService/API endpoint yet (task 15's service list has none) that
+could call `.Fetch()` at connector-creation time instead.
+
+**Impact:** Onboarding a new tenant's webhook integration requires a
+`cmd/coreapi` restart today. Not a correctness bug for already-configured
+connectors, just an operational gap for adding new ones live.
+
+**Resolution options for a human decision:**
+1. Add a `ConnectorService` (Connect-RPC, following the same handler
+   pattern as `AccountServiceHandler` etc.) whose `CreateConnector`
+   (webhook type) calls `webhookReceiver.Fetch()` immediately after the
+   DB insert - closes the gap, but ConnectorService itself isn't
+   currently scoped to any existing task.
+2. Poll the `connectors` table periodically (e.g. every 30s) from
+   `cmd/coreapi` and re-run `loadWebhookConnectors`, diffing against
+   already-registered connector IDs - cheap, no new API surface, but a
+   real (bounded) staleness window.
+3. Accept the restart-required behavior as an operational runbook step
+   for MVP (document it, revisit if webhook onboarding frequency makes
+   it painful).
+
+Not resolved here since it depends on whether/when a general
+Connector-management API surface gets built - a scope decision beyond
+this task's own boundary (webhook connector mechanics, HMAC verification,
+dedup), not something to invent unilaterally in passing.
+
 ## `account_group` rule-scope taxonomy was never given a schema/domain representation
 
 **Found in:** plans/task/core/12 (matching batch worker), while implementing `EnumeratePartitions`.
@@ -63,3 +101,50 @@ found for a partition enumerated as `(accountB, accountA)`. This doubles
 the rule-lookup query count per partition (cheap, indexed lookups) and
 is itself a symptom of the same missing-taxonomy gap, not a separate
 issue.
+
+## Two outbox mechanisms with overlapping intent (`ingestion_outbox` vs `outbox_event`)
+
+**Found in:** plans/task/core/18 (streaming ingestion), while building the
+general transactional-outbox table.
+
+**Issue:** `plans/task/core/06`/`09` already built `ingestion_outbox`
+(`id, tenant_id, topic, key, payload, created_at, sent_at`) + a Go
+`OutboxWriter`/`OutboxReader`/`OutboxRelay` poller that marks `sent_at`
+once a row is relayed to Kafka - built and working, used by
+`cmd/ingestion-gateway`'s real seed flow. `plans/task/core/18` specifies
+a *second*, more general `outbox_event` table
+(`aggregate_type, aggregate_id, event_type, topic, payload` - no
+`sent_at`, no Go poller) meant to be consumed via Debezium's CDC outbox-
+event-router SMT instead - the foundation tasks 19/21/22 build on.
+
+Both exist now, side by side, doing conceptually the same job
+(transactional outbox → Kafka) via two different mechanisms (Go-poller-
+with-sent_at vs. CDC-stream-of-inserts) for two different call sites
+(ingestion pipeline vs. everything else). Task 18's own spec doesn't say
+to migrate task 06's usage onto the new table - only to build the new
+one for its own scope (webhook receiver, kafka-source connector, and
+later tasks' event emission).
+
+**Impact:** No functional bug today - each mechanism works correctly for
+its own current callers. But two outbox tables/consumption models is
+genuine architectural duplication that will confuse the next person
+touching either, and `internal/ingestion`'s `OutboxRelay` poller vs.
+Debezium CDC are operationally different things to run/monitor.
+
+**Resolution options for a human decision:**
+1. Migrate `internal/ingestion`'s outbox writes onto `outbox_event` +
+   Debezium, retire `ingestion_outbox`/`OutboxRelay` entirely - one
+   mechanism, but a real migration of already-working, tested code.
+2. Keep both permanently: `ingestion_outbox` for the ingestion
+   pipeline's own simple relay need, `outbox_event` for the general CDC-
+   driven case tasks 19/21/22 need. Document the split as intentional
+   rather than accidental.
+3. Migrate the other direction (retire `outbox_event`, extend
+   `ingestion_outbox`'s shape + `OutboxRelay` to cover the general case)
+   - keeps one mechanism without adopting Debezium, but Debezium is
+   explicitly the design's own chosen mechanism for §7.3's outbox
+   pattern, so this fights the design doc rather than following it.
+
+Not resolved here since it's a genuine trade-off between "one mechanism"
+and "don't touch already-working tested code" - not something to decide
+unilaterally while implementing task 18's own narrower scope.

@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package jengine.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "github.com/koriebruh/Jengine/gen/go/jengine/v1;jenginev1";
+
+// Money avoids float precision issues (plans/docs/06-streaming-architecture.md
+// §7.2) - units is the whole-currency-unit part, nanos is the
+// fractional part in billionths (matches google.type.Money's own
+// convention, reimplemented locally rather than importing the
+// well-known type to avoid an extra external proto dependency for one
+// message shape).
+message Money {
+  int64 units = 1;
+  int32 nanos = 2;
+  string currency_code = 3;
+}
+
+enum SourceMode {
+  SOURCE_MODE_UNSPECIFIED = 0;
+  SOURCE_MODE_BATCH = 1;
+  SOURCE_MODE_STREAM = 2;
+}
+
+// TransactionEvent is the canonical event schema for
+// normalized.transactions.<shard> (plans/docs/06-streaming-architecture.md
+// §7.2) - the source of truth for both the Kafka event contract and,
+// via the outbox pattern (task 18), what a Debezium outbox-router SMT
+// serializes onto the topic.
+message TransactionEvent {
+  string tenant_id = 1;
+  string transaction_id = 2;
+  string account_id = 3;
+  google.protobuf.Timestamp value_date = 4;
+  Money amount = 5;
+  string external_ref = 6;
+  string counterparty_ref = 7;
+  SourceMode source_mode = 8;
+  string idempotency_key = 9;
+  google.protobuf.Struct raw_payload = 10;
+}

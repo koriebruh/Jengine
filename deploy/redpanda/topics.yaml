@@ -1,0 +1,64 @@
+# plans/task/core/18: Redpanda topic layout, per
+# plans/docs/06-streaming-architecture.md §7.1. Applied via
+# scripts/create-topics.sh (rpk-driven, see that script for the actual
+# `rpk topic create` invocations this file documents).
+#
+# <shard> is "default" at MVP - this repo has no real per-tenant sharding
+# yet (that's task 24's Dedicated-tier provisioning); the naming scheme
+# is dedicated-tier-aware (shard_or_tenant_id) so Dedicated tenants can
+# get their own topic names later without a rename migration.
+#
+# Partition counts are over-provisioned from day one per
+# plans/docs/11-scalability-roadmap.md §12.1: "over-provision partition
+# count early - repartitioning existing data is hard, increasing count
+# is easy." 50-100 partitions per shard topic even at MVP's low volume.
+topics:
+  - name: ingestion.raw.default
+    partitions: 50
+    retention_ms: 604800000 # 7 days
+    partition_key: tenant_id
+
+  - name: normalized.transactions.default
+    partitions: 50
+    retention_ms: 2592000000 # 30 days
+    partition_key: "tenant_id,account_id"
+
+  - name: matching.results.default
+    partitions: 50
+    retention_ms: 7776000000 # 90 days
+    partition_key: "tenant_id,account_id"
+
+  - name: case.events.default
+    partitions: 50
+    retention_ms: 31536000000 # 1 year
+    partition_key: tenant_id
+
+  - name: audit.events
+    partitions: 50
+    cleanup_policy: compact
+    retention_ms: -1 # indefinite, compacted
+    partition_key: tenant_id
+
+  - name: webhook.outbox
+    partitions: 50
+    retention_ms: 604800000 # 7 days
+    partition_key: tenant_id
+
+  # dlq.<stage> - one per pipeline stage that can fail terminally; MVP
+  # seeds the stages that exist today (task 06-09's pipeline). Add more
+  # dlq.<stage> entries here as new stages are introduced, mirroring the
+  # source topic's partition count per §7.1 ("mirrors source").
+  - name: dlq.format_parse
+    partitions: 50
+    retention_ms: 7776000000 # 90 days
+    partition_key: tenant_id
+
+  - name: dlq.field_mapping
+    partitions: 50
+    retention_ms: 7776000000
+    partition_key: tenant_id
+
+  - name: dlq.validation
+    partitions: 50
+    retention_ms: 7776000000
+    partition_key: tenant_id

@@ -1,0 +1,32 @@
+{
+  "name": "jengine-outbox-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "jengine",
+    "database.password": "jengine_dev",
+    "database.dbname": "jengine",
+    "topic.prefix": "jengine",
+    "plugin.name": "pgoutput",
+    "slot.name": "jengine_outbox_slot",
+    "publication.autocreate.mode": "filtered",
+
+    "table.include.list": "public.outbox_event",
+    "binary.handling.mode": "base64",
+
+    "transforms": "outbox",
+    "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+
+    "transforms.outbox.table.field.event.id": "id",
+    "transforms.outbox.table.field.event.key": "aggregate_id",
+    "transforms.outbox.table.field.event.payload": "payload",
+
+    "transforms.outbox.route.by.field": "topic",
+    "transforms.outbox.route.topic.replacement": "${routedByValue}",
+    "transforms.outbox.table.fields.additional.placement": "tenant_id:header:tenant_id,aggregate_type:header:aggregate_type,event_type:header:event_type",
+
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.storage.StringConverter"
+  }
+}

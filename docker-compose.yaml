@@ -2,9 +2,11 @@ name: jengine-dev
 
 # Local dev stack per plans/docs/16-development-workflow.md §16.2 and
 # plans/task/core/02. Deliberately simplified vs production: single-node
-# Postgres (not Citus), single-broker Redpanda (no Kafka Connect cluster),
-# no real Object Lock/WORM in MinIO. `make dev-up` / `make dev-down` wrap
-# this file - see makefile.
+# Postgres (not Citus), single-broker Redpanda, no real Object Lock/WORM
+# in MinIO. `make dev-up` / `make dev-down` wrap this file - see makefile.
+# Kafka Connect + Debezium (plans/task/core/18) added below - this is now
+# the one Kafka Connect cluster in this stack; task 22 (ClickHouse CDC)
+# reuses it rather than standing up a second one.
 #
 # NOTE: filename deviates from plans/task/core/02's suggested
 # deploy/docker-compose.dev.yml path - kept at repo root as
@@ -16,6 +18,12 @@ services:
     image: postgres:16
     container_name: jengine-postgres
     restart: unless-stopped
+    # wal_level=logical: required for Debezium's Postgres connector
+    # (logical replication slots) - plans/task/core/18. Postgres's
+    # default (replica) doesn't support this; not needed by anything
+    # else in the stack, so it's scoped to this one flag rather than a
+    # broader config file mount.
+    command: ["postgres", "-c", "wal_level=logical"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-jengine}
       POSTGRES_USER: ${POSTGRES_USER:-jengine}
@@ -59,8 +67,15 @@ services:
       - --overprovisioned
       - --node-id=0
       - --check=false
-      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
-      - --advertise-kafka-addr=PLAINTEXT://localhost:${REDPANDA_KAFKA_PORT:-9092}
+      # Two listeners (plans/task/core/18): "external" keeps the
+      # existing localhost:9092 behavior for host-machine tools
+      # (go test, a native rpk CLI); "internal" is what OTHER
+      # containers (kafka-connect) reach redpanda at - advertising
+      # "localhost" to a different container would make it try to
+      # connect to itself, not redpanda (the classic containerized-
+      # Kafka advertised-listener pitfall).
+      - --kafka-addr=internal://0.0.0.0:29092,external://0.0.0.0:9092
+      - --advertise-kafka-addr=internal://redpanda:29092,external://localhost:${REDPANDA_KAFKA_PORT:-9092}
       - --schema-registry-addr=0.0.0.0:8081
     ports:
       - "${REDPANDA_KAFKA_PORT:-9092}:9092"
@@ -72,6 +87,46 @@ services:
       timeout: 10s
       retries: 10
       start_period: 20s
+    networks:
+      - jengine-dev
+
+  # plans/task/core/18: Kafka Connect + Debezium, bundled in one image.
+  # Runs the outbox-event-router SMT reading outbox_event's CDC stream;
+  # task 22 (ClickHouse sync) adds more connectors to this SAME cluster
+  # rather than standing up a second one (plans/task/core/18 Common
+  # Pitfalls). Not started by a bare `docker compose up` - same
+  # opt-in-profile pattern as the observability stack, since it's a
+  # heavier JVM process not every dev task needs running.
+  kafka-connect:
+    image: debezium/connect:2.7.3.Final
+    container_name: jengine-kafka-connect
+    profiles: ["streaming"]
+    restart: unless-stopped
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      BOOTSTRAP_SERVERS: redpanda:29092
+      GROUP_ID: jengine-connect
+      CONFIG_STORAGE_TOPIC: _jengine_connect_configs
+      OFFSET_STORAGE_TOPIC: _jengine_connect_offsets
+      STATUS_STORAGE_TOPIC: _jengine_connect_status
+      # Single-node dev setup - replication factor 1 for Connect's own
+      # internal topics (Redpanda's single broker can't satisfy a
+      # higher RF; production would use 3).
+      CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      STATUS_STORAGE_REPLICATION_FACTOR: 1
+    ports:
+      - "${KAFKA_CONNECT_PORT:-8083}:8083"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8083/connectors >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
     networks:
       - jengine-dev
 

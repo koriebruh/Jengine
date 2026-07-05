@@ -27,8 +27,10 @@ import (
 	"github.com/koriebruh/Jengine/internal/ingestion"
 	"github.com/koriebruh/Jengine/internal/ingestion/connector"
 	"github.com/koriebruh/Jengine/internal/ingestion/connector/csvupload"
+	"github.com/koriebruh/Jengine/internal/ingestion/connector/kafkasource"
 	"github.com/koriebruh/Jengine/internal/ingestion/connector/sftp"
 	"github.com/koriebruh/Jengine/internal/ingestion/connector/testconnector"
+	"github.com/koriebruh/Jengine/internal/ingestion/connector/webhookreceiver"
 	"github.com/koriebruh/Jengine/internal/ingestion/dedup"
 	"github.com/koriebruh/Jengine/internal/ingestion/kafka"
 	"github.com/koriebruh/Jengine/internal/ingestion/mapping"
@@ -76,9 +78,15 @@ func newTxRunner(pool *pgxpool.Pool) func(ctx context.Context, tenantID uuid.UUI
 	}
 }
 
-// newRegistry registers every plans/task/core/07 connector type -
-// callers construct instances via registry.New("csv"|"sftp_mt940", cfg).
-func newRegistry(pool *pgxpool.Pool, statements *postgres.StatementRepo, secrets sftp.SecretResolver, store csvupload.ObjectStore) *connector.Registry {
+// sharedWebhookReceiver is the one webhookreceiver.Connector instance
+// every tenant's "webhook" registration shares (plans/task/core/18) -
+// unlike the pull-based connectors below, it's stateful (holds a
+// per-connector-ID config map + the single inbound records channel
+// ServeHTTP enqueues onto), so registry.New("webhook", cfg) must return
+// the SAME instance each time, not a fresh one. Exported so cmd/main can
+// also mount its ServeHTTP on the HTTP server; see webhookreceiver's own
+// package doc for why this diverges from every other connector's shape.
+func newRegistry(pool *pgxpool.Pool, statements *postgres.StatementRepo, secrets sftp.SecretResolver, store csvupload.ObjectStore) (*connector.Registry, *webhookreceiver.Connector) {
 	reg := connector.NewRegistry()
 	txRunner := newTxRunner(pool)
 
@@ -93,7 +101,20 @@ func newRegistry(pool *pgxpool.Pool, statements *postgres.StatementRepo, secrets
 		return sftp.New(txRunner, secrets, statements), nil
 	})
 
-	return reg
+	// webhookreceiver.SecretResolver/kafkasource.SecretResolver are
+	// structurally identical to sftp.SecretResolver (same Resolve
+	// signature) - Go's structural interface satisfaction means the
+	// same secrets value passed into this function already satisfies
+	// both, no adapter needed (plans/task/core/18).
+	webhook := webhookreceiver.New(secrets)
+	_ = reg.Register("webhook", func(cfg connector.ConnectorConfig) (connector.SourceConnector, error) {
+		return webhook, nil
+	})
+	_ = reg.Register("kafka_source", func(cfg connector.ConnectorConfig) (connector.SourceConnector, error) {
+		return kafkasource.New(secrets), nil
+	})
+
+	return reg, webhook
 }
 
 // runCronDispatcher is the "simple cron-based dispatcher" plans/task/core/07
@@ -274,7 +295,7 @@ func runSFTPMT940Seed() error {
 		return fmt.Errorf("new object store: %w", err)
 	}
 
-	reg := newRegistry(appPool, statementRepo, sftp.EnvSecretResolver{}, store)
+	reg, _ := newRegistry(appPool, statementRepo, sftp.EnvSecretResolver{}, store)
 	sftpConn, err := reg.New("sftp_mt940", cfg)
 	if err != nil {
 		return fmt.Errorf("registry.New(sftp_mt940): %w", err)
@@ -525,7 +546,7 @@ func runPollDemo() error {
 	if err != nil {
 		return fmt.Errorf("new object store: %w", err)
 	}
-	reg := newRegistry(appPool, statementRepo, sftp.EnvSecretResolver{}, store)
+	reg, _ := newRegistry(appPool, statementRepo, sftp.EnvSecretResolver{}, store)
 
 	connectorID := uuid.New()
 	if _, err := superuserPool.Exec(ctx,

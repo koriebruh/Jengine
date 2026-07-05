@@ -24,6 +24,9 @@ import (
 	"github.com/koriebruh/Jengine/internal/apiserver"
 	"github.com/koriebruh/Jengine/internal/audit"
 	"github.com/koriebruh/Jengine/internal/cases"
+	"github.com/koriebruh/Jengine/internal/ingestion/connector"
+	"github.com/koriebruh/Jengine/internal/ingestion/connector/sftp"
+	"github.com/koriebruh/Jengine/internal/ingestion/connector/webhookreceiver"
 	"github.com/koriebruh/Jengine/internal/matching/rules"
 	"github.com/koriebruh/Jengine/internal/platform/observability"
 	"github.com/koriebruh/Jengine/internal/storage/postgres"
@@ -108,6 +111,11 @@ func main() {
 	registry := tenancy.NewPostgresRegistryRepo(superuserPool)
 	authMiddleware := tenancy.NewMiddleware(registry, []byte(jwtSecret))
 
+	webhookReceiver := webhookreceiver.New(sftp.EnvSecretResolver{})
+	if err := loadWebhookConnectors(ctx, superuserPool, webhookReceiver); err != nil {
+		log.Fatalf("coreapi: load webhook connectors: %v", err)
+	}
+
 	idempotency := apiserver.NewPostgresIdempotencyStore(appPool)
 	auditWriter := audit.NewPostgresWriter()
 
@@ -138,11 +146,18 @@ func main() {
 	breakHandler := &apiserver.BreakServiceHandler{Pool: appPool, Cases: postgres.NewCaseRepo(), Lifecycle: lifecycle, Idempotency: idempotency}
 	mux.Handle(jenginev1connect.NewBreakServiceHandler(breakHandler, handlerOpts...))
 
-	handler := apiserver.WrapAuth(authMiddleware, mux)
+	// Top-level mux: the Connect-RPC API is tenancy.Middleware-gated
+	// (JWT/API-key), but plans/task/core/18's webhook-receiver connector
+	// is its OWN auth path (per-connector HMAC signature, no tenant JWT -
+	// a payment gateway sending a settlement webhook has neither) so it
+	// must sit outside WrapAuth, not behind it.
+	topMux := http.NewServeMux()
+	topMux.HandleFunc("POST /v1/webhooks/ingest/{tenant_id}/{connector_id}", webhookIngestHandler(webhookReceiver))
+	topMux.Handle("/", apiserver.WrapAuth(authMiddleware, mux))
 
 	server := &http.Server{
 		Addr:    addr,
-		Handler: handler,
+		Handler: topMux,
 		// Unencrypted HTTP/2 (gRPC needs HTTP/2) alongside HTTP/1.1 (plain
 		// JSON/REST clients) on the same plaintext listener - the current
 		// (non-deprecated) net/http mechanism for what h2c used to
@@ -156,5 +171,64 @@ func main() {
 	log.Printf("coreapi: listening on %s", addr)
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("coreapi: serve: %v", err)
+	}
+}
+
+// loadWebhookConnectors registers every ACTIVE "webhook" type connector
+// (plans/task/core/18) with recv at startup, so ServeHTTP can route
+// incoming requests by connector ID from process start. A raw query
+// here (rather than a new domain.ConnectorRepository method) since
+// "list every webhook connector across all tenants" is a startup-only,
+// cross-tenant query no other caller needs - domain.ConnectorRepository
+// is deliberately tenant-scoped (ListByTenant) everywhere else.
+//
+// Known gap, not solved here: a webhook connector created AFTER this
+// process starts isn't picked up until restart - there's no
+// ConnectorService/API endpoint yet (task 15's service list doesn't
+// include one) that could call webhookReceiver.Fetch() at creation
+// time. Flagged in QA_REPORT.md rather than silently left unnoted.
+func loadWebhookConnectors(ctx context.Context, pool *pgxpool.Pool, recv *webhookreceiver.Connector) error {
+	rows, err := pool.Query(ctx,
+		`SELECT tenant_id, id, config FROM connectors WHERE type = 'webhook' AND status = 'ACTIVE'`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var loaded int
+	for rows.Next() {
+		var tenantID, connectorID uuid.UUID
+		var cfgBytes []byte
+		if err := rows.Scan(&tenantID, &connectorID, &cfgBytes); err != nil {
+			return err
+		}
+		_, err := recv.Fetch(ctx, connector.ConnectorConfig{
+			TenantID: tenantID, ConnectorID: connectorID, Type: "webhook", Settings: cfgBytes,
+		})
+		if err != nil {
+			return err
+		}
+		loaded++
+	}
+	log.Printf("coreapi: loaded %d webhook connector(s)", loaded)
+	return rows.Err()
+}
+
+// webhookIngestHandler adapts webhookreceiver.Connector.ServeHTTP's
+// (w, r, tenantID, connectorID) signature to a standard http.HandlerFunc,
+// extracting path values via Go 1.22+'s ServeMux wildcards.
+func webhookIngestHandler(recv *webhookreceiver.Connector) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tenantID, err := uuid.Parse(r.PathValue("tenant_id"))
+		if err != nil {
+			http.Error(w, "invalid tenant_id", http.StatusBadRequest)
+			return
+		}
+		connectorID, err := uuid.Parse(r.PathValue("connector_id"))
+		if err != nil {
+			http.Error(w, "invalid connector_id", http.StatusBadRequest)
+			return
+		}
+		recv.ServeHTTP(w, r, tenantID, connectorID)
 	}
 }

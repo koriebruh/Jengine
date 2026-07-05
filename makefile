@@ -1,5 +1,6 @@
 .PHONY: build test lint vet fmt tidy clean lint-tenancy \
-	dev-up dev-down dev-down-volumes dev-logs migrate seed \
+	dev-up dev-down dev-down-volumes dev-logs migrate seed create-topics \
+	streaming-up register-connectors \
 	test-unit test-integration test-golden ci \
 	web-dev web-build web-lint
 
@@ -58,6 +59,16 @@ migrate: ## Runs migrations/*.sql via golang-migrate (plans/task/core/03).
 
 seed: ## Loads the sample MT940 file through the SFTP+MT940 connector path (plans/task/core/07).
 	./scripts/seed.sh
+
+create-topics: ## Creates the Redpanda topic layout (plans/task/core/18, deploy/redpanda/topics.yaml).
+	./scripts/create-topics.sh
+
+streaming-up: ## Brings up Kafka Connect + Debezium on top of the base stack (plans/task/core/18).
+	$(COMPOSE) --profile streaming up -d
+	$(COMPOSE) ps
+
+register-connectors: ## Registers the Debezium outbox-event-router connector (plans/task/core/18).
+	./scripts/register-debezium-connectors.sh
 
 # --- Task 17: testing harness + CI-equivalent local run ------------------
 
