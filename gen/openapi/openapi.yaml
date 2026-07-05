@@ -1,0 +1,2557 @@
+openapi: 3.1.0
+info: {}
+paths:
+  /jengine.v1.AccountService/CreateAccount:
+    post:
+      tags:
+        - jengine.v1.AccountService
+      summary: CreateAccount
+      operationId: jengine.v1.AccountService.CreateAccount
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.CreateAccountRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.CreateAccountResponse'
+  /jengine.v1.AccountService/GetAccount:
+    post:
+      tags:
+        - jengine.v1.AccountService
+      summary: GetAccount
+      operationId: jengine.v1.AccountService.GetAccount
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.GetAccountRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.GetAccountResponse'
+  /jengine.v1.AccountService/ListAccounts:
+    post:
+      tags:
+        - jengine.v1.AccountService
+      summary: ListAccounts
+      operationId: jengine.v1.AccountService.ListAccounts
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.ListAccountsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.ListAccountsResponse'
+  /jengine.v1.BreakService/AddComment:
+    post:
+      tags:
+        - jengine.v1.BreakService
+      summary: AddComment
+      operationId: jengine.v1.BreakService.AddComment
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.AddCommentRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.AddCommentResponse'
+  /jengine.v1.BreakService/AssignBreak:
+    post:
+      tags:
+        - jengine.v1.BreakService
+      summary: AssignBreak
+      operationId: jengine.v1.BreakService.AssignBreak
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.AssignBreakRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.AssignBreakResponse'
+  /jengine.v1.BreakService/BulkAssignBreaks:
+    post:
+      tags:
+        - jengine.v1.BreakService
+      summary: BulkAssignBreaks
+      operationId: jengine.v1.BreakService.BulkAssignBreaks
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.BulkAssignBreaksRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.BulkAssignBreaksResponse'
+  /jengine.v1.BreakService/BulkCommentBreaks:
+    post:
+      tags:
+        - jengine.v1.BreakService
+      summary: BulkCommentBreaks
+      operationId: jengine.v1.BreakService.BulkCommentBreaks
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.BulkCommentBreaksRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.BulkCommentBreaksResponse'
+  /jengine.v1.BreakService/BulkResolveBreaks:
+    post:
+      tags:
+        - jengine.v1.BreakService
+      summary: BulkResolveBreaks
+      operationId: jengine.v1.BreakService.BulkResolveBreaks
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.BulkResolveBreaksRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.BulkResolveBreaksResponse'
+  /jengine.v1.BreakService/DecideApproval:
+    post:
+      tags:
+        - jengine.v1.BreakService
+      summary: DecideApproval
+      operationId: jengine.v1.BreakService.DecideApproval
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.DecideApprovalRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.DecideApprovalResponse'
+  /jengine.v1.BreakService/GetBreak:
+    post:
+      tags:
+        - jengine.v1.BreakService
+      summary: GetBreak
+      operationId: jengine.v1.BreakService.GetBreak
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.GetBreakRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.GetBreakResponse'
+  /jengine.v1.BreakService/ListBreaks:
+    post:
+      tags:
+        - jengine.v1.BreakService
+      summary: ListBreaks
+      operationId: jengine.v1.BreakService.ListBreaks
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.ListBreaksRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.ListBreaksResponse'
+  /jengine.v1.BreakService/RequestApproval:
+    post:
+      tags:
+        - jengine.v1.BreakService
+      summary: RequestApproval
+      operationId: jengine.v1.BreakService.RequestApproval
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.RequestApprovalRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.RequestApprovalResponse'
+  /jengine.v1.BreakService/TagRootCause:
+    post:
+      tags:
+        - jengine.v1.BreakService
+      summary: TagRootCause
+      operationId: jengine.v1.BreakService.TagRootCause
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.TagRootCauseRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.TagRootCauseResponse'
+  /jengine.v1.BreakService/TransitionBreak:
+    post:
+      tags:
+        - jengine.v1.BreakService
+      summary: TransitionBreak
+      operationId: jengine.v1.BreakService.TransitionBreak
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.TransitionBreakRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.TransitionBreakResponse'
+  /jengine.v1.MatchReviewService/BulkConfirmMatches:
+    post:
+      tags:
+        - jengine.v1.MatchReviewService
+      summary: BulkConfirmMatches
+      operationId: jengine.v1.MatchReviewService.BulkConfirmMatches
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.BulkConfirmMatchesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.BulkConfirmMatchesResponse'
+  /jengine.v1.MatchReviewService/ConfirmMatch:
+    post:
+      tags:
+        - jengine.v1.MatchReviewService
+      summary: ConfirmMatch
+      operationId: jengine.v1.MatchReviewService.ConfirmMatch
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.ConfirmMatchRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.ConfirmMatchResponse'
+  /jengine.v1.MatchReviewService/ListSuggestedMatches:
+    post:
+      tags:
+        - jengine.v1.MatchReviewService
+      summary: ListSuggestedMatches
+      operationId: jengine.v1.MatchReviewService.ListSuggestedMatches
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.ListSuggestedMatchesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.ListSuggestedMatchesResponse'
+  /jengine.v1.MatchReviewService/RejectMatch:
+    post:
+      tags:
+        - jengine.v1.MatchReviewService
+      summary: RejectMatch
+      operationId: jengine.v1.MatchReviewService.RejectMatch
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.RejectMatchRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.RejectMatchResponse'
+  /jengine.v1.MatchRuleService/ActivateRule:
+    post:
+      tags:
+        - jengine.v1.MatchRuleService
+      summary: ActivateRule
+      operationId: jengine.v1.MatchRuleService.ActivateRule
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.ActivateRuleRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.ActivateRuleResponse'
+  /jengine.v1.MatchRuleService/CreateDraftRule:
+    post:
+      tags:
+        - jengine.v1.MatchRuleService
+      summary: CreateDraftRule
+      operationId: jengine.v1.MatchRuleService.CreateDraftRule
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.CreateDraftRuleRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.CreateDraftRuleResponse'
+  /jengine.v1.MatchRuleService/GetRule:
+    post:
+      tags:
+        - jengine.v1.MatchRuleService
+      summary: GetRule
+      operationId: jengine.v1.MatchRuleService.GetRule
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.GetRuleRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.GetRuleResponse'
+  /jengine.v1.MatchRuleService/ListRules:
+    post:
+      tags:
+        - jengine.v1.MatchRuleService
+      summary: ListRules
+      operationId: jengine.v1.MatchRuleService.ListRules
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.ListRulesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.ListRulesResponse'
+  /jengine.v1.StatementService/GetStatement:
+    post:
+      tags:
+        - jengine.v1.StatementService
+      summary: GetStatement
+      operationId: jengine.v1.StatementService.GetStatement
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.GetStatementRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.GetStatementResponse'
+  /jengine.v1.StatementService/ListStatements:
+    post:
+      tags:
+        - jengine.v1.StatementService
+      summary: ListStatements
+      operationId: jengine.v1.StatementService.ListStatements
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.ListStatementsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.ListStatementsResponse'
+  /jengine.v1.TransactionService/GetTransaction:
+    post:
+      tags:
+        - jengine.v1.TransactionService
+      summary: GetTransaction
+      operationId: jengine.v1.TransactionService.GetTransaction
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.GetTransactionRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.GetTransactionResponse'
+  /jengine.v1.TransactionService/ListTransactions:
+    post:
+      tags:
+        - jengine.v1.TransactionService
+      summary: ListTransactions
+      operationId: jengine.v1.TransactionService.ListTransactions
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.ListTransactionsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.ListTransactionsResponse'
+  /jengine.v1.WebhookService/CreateSubscription:
+    post:
+      tags:
+        - jengine.v1.WebhookService
+      summary: CreateSubscription
+      operationId: jengine.v1.WebhookService.CreateSubscription
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.CreateSubscriptionRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.CreateSubscriptionResponse'
+  /jengine.v1.WebhookService/ListDeliveries:
+    post:
+      tags:
+        - jengine.v1.WebhookService
+      summary: ListDeliveries
+      operationId: jengine.v1.WebhookService.ListDeliveries
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.ListDeliveriesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.ListDeliveriesResponse'
+  /jengine.v1.WebhookService/ListSubscriptions:
+    post:
+      tags:
+        - jengine.v1.WebhookService
+      summary: ListSubscriptions
+      operationId: jengine.v1.WebhookService.ListSubscriptions
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.ListSubscriptionsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.ListSubscriptionsResponse'
+  /jengine.v1.WebhookService/MintStreamToken:
+    post:
+      tags:
+        - jengine.v1.WebhookService
+      summary: MintStreamToken
+      operationId: jengine.v1.WebhookService.MintStreamToken
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.MintStreamTokenRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.MintStreamTokenResponse'
+  /jengine.v1.WebhookService/RedriveDelivery:
+    post:
+      tags:
+        - jengine.v1.WebhookService
+      summary: RedriveDelivery
+      operationId: jengine.v1.WebhookService.RedriveDelivery
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.RedriveDeliveryRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.RedriveDeliveryResponse'
+  /jengine.v1.WebhookService/UpdateSubscriptionStatus:
+    post:
+      tags:
+        - jengine.v1.WebhookService
+      summary: UpdateSubscriptionStatus
+      operationId: jengine.v1.WebhookService.UpdateSubscriptionStatus
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/jengine.v1.UpdateSubscriptionStatusRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/jengine.v1.UpdateSubscriptionStatusResponse'
+components:
+  schemas:
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          oneOf:
+            - type: object
+              title: Any
+              additionalProperties: true
+              description: Detailed error information.
+          discriminator:
+            propertyName: type
+          title: Debug
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+    google.protobuf.ListValue:
+      type: object
+      properties:
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.protobuf.Value'
+          title: values
+          description: Repeated field of dynamically typed values.
+      title: ListValue
+      additionalProperties: false
+      description: |-
+        `ListValue` is a wrapper around a repeated field of values.
+
+         The JSON representation for `ListValue` is JSON array.
+    google.protobuf.NullValue:
+      type: string
+      title: NullValue
+      enum:
+        - NULL_VALUE
+      description: |-
+        `NullValue` is a singleton enumeration to represent the null value for the
+         `Value` type union.
+
+         The JSON representation for `NullValue` is JSON `null`.
+    google.protobuf.Struct:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/google.protobuf.Value'
+      description: |-
+        `Struct` represents a structured data value, consisting of fields
+         which map to dynamically typed values. In some languages, `Struct`
+         might be supported by a native representation. For example, in
+         scripting languages like JS a struct is represented as an
+         object. The details of that representation are described together
+         with the proto support for the language.
+
+         The JSON representation for `Struct` is JSON object.
+    google.protobuf.Struct.FieldsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/google.protobuf.Value'
+      title: FieldsEntry
+      additionalProperties: false
+    google.protobuf.Timestamp:
+      type: string
+      examples:
+        - "2023-01-15T01:30:15.01Z"
+        - "2024-12-25T12:00:00Z"
+      format: date-time
+      description: |-
+        A Timestamp represents a point in time independent of any time zone or local
+         calendar, encoded as a count of seconds and fractions of seconds at
+         nanosecond resolution. The count is relative to an epoch at UTC midnight on
+         January 1, 1970, in the proleptic Gregorian calendar which extends the
+         Gregorian calendar backwards to year one.
+
+         All minutes are 60 seconds long. Leap seconds are "smeared" so that no leap
+         second table is needed for interpretation, using a [24-hour linear
+         smear](https://developers.google.com/time/smear).
+
+         The range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By
+         restricting to that range, we ensure that we can convert to and from [RFC
+         3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.
+
+         # Examples
+
+         Example 1: Compute Timestamp from POSIX `time()`.
+
+             Timestamp timestamp;
+             timestamp.set_seconds(time(NULL));
+             timestamp.set_nanos(0);
+
+         Example 2: Compute Timestamp from POSIX `gettimeofday()`.
+
+             struct timeval tv;
+             gettimeofday(&tv, NULL);
+
+             Timestamp timestamp;
+             timestamp.set_seconds(tv.tv_sec);
+             timestamp.set_nanos(tv.tv_usec * 1000);
+
+         Example 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.
+
+             FILETIME ft;
+             GetSystemTimeAsFileTime(&ft);
+             UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+
+             // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z
+             // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.
+             Timestamp timestamp;
+             timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));
+             timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));
+
+         Example 4: Compute Timestamp from Java `System.currentTimeMillis()`.
+
+             long millis = System.currentTimeMillis();
+
+             Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)
+                 .setNanos((int) ((millis % 1000) * 1000000)).build();
+
+         Example 5: Compute Timestamp from Java `Instant.now()`.
+
+             Instant now = Instant.now();
+
+             Timestamp timestamp =
+                 Timestamp.newBuilder().setSeconds(now.getEpochSecond())
+                     .setNanos(now.getNano()).build();
+
+         Example 6: Compute Timestamp from current time in Python.
+
+             timestamp = Timestamp()
+             timestamp.GetCurrentTime()
+
+         # JSON Mapping
+
+         In JSON format, the Timestamp type is encoded as a string in the
+         [RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the
+         format is "{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z"
+         where {year} is always expressed using four digits while {month}, {day},
+         {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional
+         seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),
+         are optional. The "Z" suffix indicates the timezone ("UTC"); the timezone
+         is required. A proto3 JSON serializer should always use UTC (as indicated by
+         "Z") when printing the Timestamp type and a proto3 JSON parser should be
+         able to accept both UTC and other timezones (as indicated by an offset).
+
+         For example, "2017-01-15T01:30:15.01Z" encodes 15.01 seconds past
+         01:30 UTC on January 15, 2017.
+
+         In JavaScript, one can convert a Date object to this format using the
+         standard
+         [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)
+         method. In Python, a standard `datetime.datetime` object can be converted
+         to this format using
+         [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with
+         the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use
+         the Joda Time's [`ISODateTimeFormat.dateTime()`](
+         http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()
+         ) to obtain a formatter capable of generating timestamps in this format.
+    google.protobuf.Value:
+      oneOf:
+        - type: "null"
+        - type: number
+        - type: string
+        - type: boolean
+        - type: array
+        - type: object
+          additionalProperties: true
+      description: |-
+        `Value` represents a dynamically typed value which can be either
+         null, a number, a string, a boolean, a recursive struct value, or a
+         list of values. A producer of value is expected to set one of these
+         variants. Absence of any variant indicates an error.
+
+         The JSON representation for `Value` is JSON value.
+    jengine.v1.Account:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        externalAccountRef:
+          type: string
+          title: external_account_ref
+        accountType:
+          type: string
+          title: account_type
+          description: BANK|GL|GATEWAY|CASH
+        currency:
+          type: string
+          title: currency
+        name:
+          type: string
+          title: name
+        metadataJson:
+          type: string
+          title: metadata_json
+          description: raw jsonb, opaque to the API layer
+        createdAt:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        updatedAt:
+          title: updated_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: Account
+      additionalProperties: false
+    jengine.v1.ActivateRuleRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        approvedBy:
+          type: string
+          title: approved_by
+          description: must differ from the rule's created_by - maker-checker-lite
+      title: ActivateRuleRequest
+      additionalProperties: false
+    jengine.v1.ActivateRuleResponse:
+      type: object
+      properties:
+        rule:
+          title: rule
+          $ref: '#/components/schemas/jengine.v1.MatchRule'
+      title: ActivateRuleResponse
+      additionalProperties: false
+    jengine.v1.Actor:
+      type: object
+      properties:
+        userId:
+          type: string
+          title: user_id
+        role:
+          type: string
+          title: role
+      title: Actor
+      additionalProperties: false
+    jengine.v1.AddCommentRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        actor:
+          title: actor
+          $ref: '#/components/schemas/jengine.v1.Actor'
+        body:
+          type: string
+          title: body
+      title: AddCommentRequest
+      additionalProperties: false
+    jengine.v1.AddCommentResponse:
+      type: object
+      properties:
+        commentId:
+          type: string
+          title: comment_id
+      title: AddCommentResponse
+      additionalProperties: false
+    jengine.v1.AssignBreakRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        assignee:
+          type: string
+          title: assignee
+        actor:
+          title: actor
+          $ref: '#/components/schemas/jengine.v1.Actor'
+      title: AssignBreakRequest
+      additionalProperties: false
+    jengine.v1.AssignBreakResponse:
+      type: object
+      title: AssignBreakResponse
+      additionalProperties: false
+    jengine.v1.Break:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        accountId:
+          type: string
+          title: account_id
+        relatedTransactionIds:
+          type: array
+          items:
+            type: string
+          title: related_transaction_ids
+        breakType:
+          type: string
+          title: break_type
+        rootCauseCategory:
+          type: string
+          title: root_cause_category
+        status:
+          type: string
+          title: status
+        assignedTo:
+          type: string
+          title: assigned_to
+        priority:
+          type: string
+          title: priority
+        slaDueAt:
+          title: sla_due_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        openedAt:
+          title: opened_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        resolvedAt:
+          title: resolved_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        amountAtRisk:
+          type: string
+          title: amount_at_risk
+          description: decimal, string-encoded
+        currency:
+          type: string
+          title: currency
+      title: Break
+      additionalProperties: false
+      description: |-
+        Break mirrors the cases table (the Break/Case entity - plans/task/core/13's
+         domain.Case). Thin wrappers over cases.LifecycleService, per
+         plans/task/core/15 Implementation Notes.
+    jengine.v1.BulkAssignBreaksRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+          title: ids
+        assignee:
+          type: string
+          title: assignee
+        actor:
+          title: actor
+          $ref: '#/components/schemas/jengine.v1.Actor'
+      title: BulkAssignBreaksRequest
+      additionalProperties: false
+    jengine.v1.BulkAssignBreaksResponse:
+      type: object
+      properties:
+        result:
+          title: result
+          $ref: '#/components/schemas/jengine.v1.BulkResult'
+      title: BulkAssignBreaksResponse
+      additionalProperties: false
+    jengine.v1.BulkCommentBreaksRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+          title: ids
+        actor:
+          title: actor
+          $ref: '#/components/schemas/jengine.v1.Actor'
+        body:
+          type: string
+          title: body
+      title: BulkCommentBreaksRequest
+      additionalProperties: false
+    jengine.v1.BulkCommentBreaksResponse:
+      type: object
+      properties:
+        result:
+          title: result
+          $ref: '#/components/schemas/jengine.v1.BulkResult'
+      title: BulkCommentBreaksResponse
+      additionalProperties: false
+    jengine.v1.BulkConfirmMatchesRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+          title: ids
+        confirmedBy:
+          type: string
+          title: confirmed_by
+      title: BulkConfirmMatchesRequest
+      additionalProperties: false
+    jengine.v1.BulkConfirmMatchesResponse:
+      type: object
+      properties:
+        result:
+          title: result
+          $ref: '#/components/schemas/jengine.v1.BulkResult'
+      title: BulkConfirmMatchesResponse
+      additionalProperties: false
+    jengine.v1.BulkResolveBreaksRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+          title: ids
+        actor:
+          title: actor
+          $ref: '#/components/schemas/jengine.v1.Actor'
+        comment:
+          type: string
+          title: comment
+      title: BulkResolveBreaksRequest
+      additionalProperties: false
+    jengine.v1.BulkResolveBreaksResponse:
+      type: object
+      properties:
+        result:
+          title: result
+          $ref: '#/components/schemas/jengine.v1.BulkResult'
+      title: BulkResolveBreaksResponse
+      additionalProperties: false
+    jengine.v1.BulkResult:
+      type: object
+      properties:
+        batchOpId:
+          type: string
+          title: batch_op_id
+        succeeded:
+          type: array
+          items:
+            type: string
+          title: succeeded
+        failed:
+          type: object
+          title: failed
+          additionalProperties:
+            type: string
+            title: value
+          description: id -> failure reason
+      title: BulkResult
+      additionalProperties: false
+      description: |-
+        BulkResult reports a per-ID outcome for any bulk operation - mirrors
+         internal/cases.BulkResult's shape (plans/task/core/13/15: a bulk call
+         over a heterogeneous selection can legitimately partially fail, e.g.
+         bulk-resolving breaks where one is already resolved - the frontend
+         needs the per-ID breakdown, not a collapsed pass/fail).
+    jengine.v1.BulkResult.FailedEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          type: string
+          title: value
+      title: FailedEntry
+      additionalProperties: false
+    jengine.v1.ConfirmMatchRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        confirmedBy:
+          type: string
+          title: confirmed_by
+      title: ConfirmMatchRequest
+      additionalProperties: false
+    jengine.v1.ConfirmMatchResponse:
+      type: object
+      properties:
+        match:
+          title: match
+          $ref: '#/components/schemas/jengine.v1.SuggestedMatch'
+      title: ConfirmMatchResponse
+      additionalProperties: false
+    jengine.v1.CreateAccountRequest:
+      type: object
+      properties:
+        externalAccountRef:
+          type: string
+          title: external_account_ref
+        accountType:
+          type: string
+          title: account_type
+        currency:
+          type: string
+          title: currency
+        name:
+          type: string
+          title: name
+        metadataJson:
+          type: string
+          title: metadata_json
+      title: CreateAccountRequest
+      additionalProperties: false
+    jengine.v1.CreateAccountResponse:
+      type: object
+      properties:
+        account:
+          title: account
+          $ref: '#/components/schemas/jengine.v1.Account'
+      title: CreateAccountResponse
+      additionalProperties: false
+    jengine.v1.CreateDraftRuleRequest:
+      type: object
+      properties:
+        ruleSpecYaml:
+          type: string
+          title: rule_spec_yaml
+          description: parsed/compiled via internal/matching/rules.ParseYAML+Compile
+        sourceAccountId:
+          type: string
+          title: source_account_id
+        targetAccountId:
+          type: string
+          title: target_account_id
+        createdBy:
+          type: string
+          title: created_by
+      title: CreateDraftRuleRequest
+      additionalProperties: false
+    jengine.v1.CreateDraftRuleResponse:
+      type: object
+      properties:
+        rule:
+          title: rule
+          $ref: '#/components/schemas/jengine.v1.MatchRule'
+      title: CreateDraftRuleResponse
+      additionalProperties: false
+    jengine.v1.CreateSubscriptionRequest:
+      type: object
+      properties:
+        url:
+          type: string
+          title: url
+        secretRef:
+          type: string
+          title: secret_ref
+        eventTypes:
+          type: array
+          items:
+            type: string
+          title: event_types
+        filterExpr:
+          type: string
+          title: filter_expr
+      title: CreateSubscriptionRequest
+      additionalProperties: false
+    jengine.v1.CreateSubscriptionResponse:
+      type: object
+      properties:
+        subscription:
+          title: subscription
+          $ref: '#/components/schemas/jengine.v1.WebhookSubscription'
+      title: CreateSubscriptionResponse
+      additionalProperties: false
+    jengine.v1.DecideApprovalRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        approver:
+          title: approver
+          $ref: '#/components/schemas/jengine.v1.Actor'
+        approve:
+          type: boolean
+          title: approve
+        comment:
+          type: string
+          title: comment
+      title: DecideApprovalRequest
+      additionalProperties: false
+    jengine.v1.DecideApprovalResponse:
+      type: object
+      title: DecideApprovalResponse
+      additionalProperties: false
+    jengine.v1.GetAccountRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: GetAccountRequest
+      additionalProperties: false
+    jengine.v1.GetAccountResponse:
+      type: object
+      properties:
+        account:
+          title: account
+          $ref: '#/components/schemas/jengine.v1.Account'
+      title: GetAccountResponse
+      additionalProperties: false
+    jengine.v1.GetBreakRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: GetBreakRequest
+      additionalProperties: false
+    jengine.v1.GetBreakResponse:
+      type: object
+      properties:
+        brk:
+          title: brk
+          $ref: '#/components/schemas/jengine.v1.Break'
+      title: GetBreakResponse
+      additionalProperties: false
+    jengine.v1.GetRuleRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: GetRuleRequest
+      additionalProperties: false
+    jengine.v1.GetRuleResponse:
+      type: object
+      properties:
+        rule:
+          title: rule
+          $ref: '#/components/schemas/jengine.v1.MatchRule'
+      title: GetRuleResponse
+      additionalProperties: false
+    jengine.v1.GetStatementRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: GetStatementRequest
+      additionalProperties: false
+    jengine.v1.GetStatementResponse:
+      type: object
+      properties:
+        statement:
+          title: statement
+          $ref: '#/components/schemas/jengine.v1.Statement'
+      title: GetStatementResponse
+      additionalProperties: false
+    jengine.v1.GetTransactionRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: GetTransactionRequest
+      additionalProperties: false
+    jengine.v1.GetTransactionResponse:
+      type: object
+      properties:
+        transaction:
+          title: transaction
+          $ref: '#/components/schemas/jengine.v1.Transaction'
+      title: GetTransactionResponse
+      additionalProperties: false
+    jengine.v1.ListAccountsRequest:
+      type: object
+      properties:
+        page:
+          title: page
+          $ref: '#/components/schemas/jengine.v1.PageRequest'
+      title: ListAccountsRequest
+      additionalProperties: false
+    jengine.v1.ListAccountsResponse:
+      type: object
+      properties:
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/jengine.v1.Account'
+          title: accounts
+        page:
+          title: page
+          $ref: '#/components/schemas/jengine.v1.PageResponse'
+      title: ListAccountsResponse
+      additionalProperties: false
+    jengine.v1.ListBreaksRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          title: status
+        assignedTo:
+          type: string
+          title: assigned_to
+        accountId:
+          type: string
+          title: account_id
+        priority:
+          type: string
+          title: priority
+        page:
+          title: page
+          $ref: '#/components/schemas/jengine.v1.PageRequest'
+      title: ListBreaksRequest
+      additionalProperties: false
+    jengine.v1.ListBreaksResponse:
+      type: object
+      properties:
+        breaks:
+          type: array
+          items:
+            $ref: '#/components/schemas/jengine.v1.Break'
+          title: breaks
+        page:
+          title: page
+          $ref: '#/components/schemas/jengine.v1.PageResponse'
+      title: ListBreaksResponse
+      additionalProperties: false
+    jengine.v1.ListDeliveriesRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          title: status
+          description: empty = no filter
+        subscriptionId:
+          type: string
+          title: subscription_id
+        page:
+          title: page
+          $ref: '#/components/schemas/jengine.v1.PageRequest'
+      title: ListDeliveriesRequest
+      additionalProperties: false
+    jengine.v1.ListDeliveriesResponse:
+      type: object
+      properties:
+        deliveries:
+          type: array
+          items:
+            $ref: '#/components/schemas/jengine.v1.WebhookDelivery'
+          title: deliveries
+        page:
+          title: page
+          $ref: '#/components/schemas/jengine.v1.PageResponse'
+      title: ListDeliveriesResponse
+      additionalProperties: false
+    jengine.v1.ListRulesRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          title: status
+          description: optional filter
+        page:
+          title: page
+          $ref: '#/components/schemas/jengine.v1.PageRequest'
+      title: ListRulesRequest
+      additionalProperties: false
+    jengine.v1.ListRulesResponse:
+      type: object
+      properties:
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/jengine.v1.MatchRule'
+          title: rules
+        page:
+          title: page
+          $ref: '#/components/schemas/jengine.v1.PageResponse'
+      title: ListRulesResponse
+      additionalProperties: false
+    jengine.v1.ListStatementsRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+        page:
+          title: page
+          $ref: '#/components/schemas/jengine.v1.PageRequest'
+      title: ListStatementsRequest
+      additionalProperties: false
+    jengine.v1.ListStatementsResponse:
+      type: object
+      properties:
+        statements:
+          type: array
+          items:
+            $ref: '#/components/schemas/jengine.v1.Statement'
+          title: statements
+        page:
+          title: page
+          $ref: '#/components/schemas/jengine.v1.PageResponse'
+      title: ListStatementsResponse
+      additionalProperties: false
+    jengine.v1.ListSubscriptionsRequest:
+      type: object
+      properties:
+        page:
+          title: page
+          $ref: '#/components/schemas/jengine.v1.PageRequest'
+      title: ListSubscriptionsRequest
+      additionalProperties: false
+    jengine.v1.ListSubscriptionsResponse:
+      type: object
+      properties:
+        subscriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/jengine.v1.WebhookSubscription'
+          title: subscriptions
+        page:
+          title: page
+          $ref: '#/components/schemas/jengine.v1.PageResponse'
+      title: ListSubscriptionsResponse
+      additionalProperties: false
+    jengine.v1.ListSuggestedMatchesRequest:
+      type: object
+      properties:
+        page:
+          title: page
+          $ref: '#/components/schemas/jengine.v1.PageRequest'
+      title: ListSuggestedMatchesRequest
+      additionalProperties: false
+    jengine.v1.ListSuggestedMatchesResponse:
+      type: object
+      properties:
+        matches:
+          type: array
+          items:
+            $ref: '#/components/schemas/jengine.v1.SuggestedMatch'
+          title: matches
+        page:
+          title: page
+          $ref: '#/components/schemas/jengine.v1.PageResponse'
+      title: ListSuggestedMatchesResponse
+      additionalProperties: false
+    jengine.v1.ListTransactionsRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+        status:
+          type: string
+          title: status
+          description: optional filter
+        valueDateFrom:
+          title: value_date_from
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        valueDateTo:
+          title: value_date_to
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        page:
+          title: page
+          $ref: '#/components/schemas/jengine.v1.PageRequest'
+      title: ListTransactionsRequest
+      additionalProperties: false
+    jengine.v1.ListTransactionsResponse:
+      type: object
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/jengine.v1.Transaction'
+          title: transactions
+        page:
+          title: page
+          $ref: '#/components/schemas/jengine.v1.PageResponse'
+      title: ListTransactionsResponse
+      additionalProperties: false
+    jengine.v1.MatchRule:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        name:
+          type: string
+          title: name
+        version:
+          type: integer
+          title: version
+          format: int32
+        status:
+          type: string
+          title: status
+          description: DRAFT|ACTIVE|ARCHIVED
+        ruleSpecYaml:
+          type: string
+          title: rule_spec_yaml
+        matchType:
+          type: string
+          title: match_type
+          description: EXACT|TOLERANCE|FUZZY|COMPOSITE
+        sourceAccountId:
+          type: string
+          title: source_account_id
+        targetAccountId:
+          type: string
+          title: target_account_id
+        priority:
+          type: integer
+          title: priority
+          format: int32
+        autoMatchThreshold:
+          type: string
+          title: auto_match_threshold
+          description: decimal, string-encoded
+        createdBy:
+          type: string
+          title: created_by
+        approvedBy:
+          type: string
+          title: approved_by
+        effectiveFrom:
+          title: effective_from
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        createdAt:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: MatchRule
+      additionalProperties: false
+      description: |-
+        MatchRule mirrors match_rules - rule_spec_yaml is the raw YAML/JSON the
+         tenant authored (plans/docs/14-dashboard-frontend.md §14.4: MVP has no
+         rule-builder UI, rules are authored "as raw YAML/JSON via API/CLI").
+    jengine.v1.MintStreamTokenRequest:
+      type: object
+      title: MintStreamTokenRequest
+      additionalProperties: false
+      description: |-
+        MintStreamTokenRequest/Response back the SSE gateway's auth story
+         (plans/task/core/21's SSE/WS gateway subsection): browser EventSource
+         can't set an Authorization header, so a short-lived, stream-scoped
+         token is minted via this normal bearer-authenticated RPC, then passed
+         as a query parameter to GET /v1/tenants/{tenant_id}/events/stream -
+         never a long-lived API token in a URL.
+    jengine.v1.MintStreamTokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          title: token
+        expiresAt:
+          title: expires_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: MintStreamTokenResponse
+      additionalProperties: false
+    jengine.v1.Money:
+      type: object
+      properties:
+        units:
+          type:
+            - integer
+            - string
+          title: units
+          format: int64
+        nanos:
+          type: integer
+          title: nanos
+          format: int32
+        currencyCode:
+          type: string
+          title: currency_code
+      title: Money
+      additionalProperties: false
+      description: |-
+        Money avoids float precision issues (plans/docs/06-streaming-architecture.md
+         §7.2) - units is the whole-currency-unit part, nanos is the
+         fractional part in billionths (matches google.type.Money's own
+         convention, reimplemented locally rather than importing the
+         well-known type to avoid an extra external proto dependency for one
+         message shape).
+    jengine.v1.PageRequest:
+      type: object
+      properties:
+        pageSize:
+          type: integer
+          title: page_size
+          format: int32
+        pageToken:
+          type: string
+          title: page_token
+      title: PageRequest
+      additionalProperties: false
+      description: |-
+        PageRequest/PageResponse follow plans/docs/07-api-extensibility.md
+         §8.1's page_token convention.
+    jengine.v1.PageResponse:
+      type: object
+      properties:
+        nextPageToken:
+          type: string
+          title: next_page_token
+      title: PageResponse
+      additionalProperties: false
+    jengine.v1.RedriveDeliveryRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: RedriveDeliveryRequest
+      additionalProperties: false
+      description: |-
+        RedriveDelivery resets attempt_count and requeues immediately
+         (plans/task/core/21 Implementation Notes) - the Tenant Admin
+         frontend's DLQ redrive button calls this; building that UI is out of
+         scope here, this RPC must be fully functional standalone.
+    jengine.v1.RedriveDeliveryResponse:
+      type: object
+      properties:
+        delivery:
+          title: delivery
+          $ref: '#/components/schemas/jengine.v1.WebhookDelivery'
+      title: RedriveDeliveryResponse
+      additionalProperties: false
+    jengine.v1.RejectMatchRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        rejectedBy:
+          type: string
+          title: rejected_by
+        reason:
+          type: string
+          title: reason
+      title: RejectMatchRequest
+      additionalProperties: false
+    jengine.v1.RejectMatchResponse:
+      type: object
+      properties:
+        breakId:
+          type: string
+          title: break_id
+          description: the Break/Case opened from the rejected match's transactions
+      title: RejectMatchResponse
+      additionalProperties: false
+    jengine.v1.RequestApprovalRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        actor:
+          title: actor
+          $ref: '#/components/schemas/jengine.v1.Actor'
+      title: RequestApprovalRequest
+      additionalProperties: false
+    jengine.v1.RequestApprovalResponse:
+      type: object
+      title: RequestApprovalResponse
+      additionalProperties: false
+    jengine.v1.SourceMode:
+      type: string
+      title: SourceMode
+      enum:
+        - SOURCE_MODE_UNSPECIFIED
+        - SOURCE_MODE_BATCH
+        - SOURCE_MODE_STREAM
+    jengine.v1.Statement:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        accountId:
+          type: string
+          title: account_id
+        sourceConnectorId:
+          type: string
+          title: source_connector_id
+        format:
+          type: string
+          title: format
+        receivedAt:
+          title: received_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        periodStart:
+          title: period_start
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        periodEnd:
+          title: period_end
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        openingBalance:
+          type: string
+          title: opening_balance
+          description: decimal, string-encoded - never float
+        closingBalance:
+          type: string
+          title: closing_balance
+        status:
+          type: string
+          title: status
+          description: RECEIVED|PARSED|VALIDATED|RECONCILED
+        checksum:
+          type: string
+          title: checksum
+        createdAt:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: Statement
+      additionalProperties: false
+      description: |-
+        Statement is read-only via this API - statements are created by
+         ingestion (plans/task/core/06-09), not via AccountService/StatementService
+         (plans/task/core/15 Implementation Notes).
+    jengine.v1.SuggestedMatch:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: MatchResult.ID
+        ruleId:
+          type: string
+          title: rule_id
+        matchType:
+          type: string
+          title: match_type
+          description: ONE_TO_ONE|ONE_TO_MANY|MANY_TO_ONE|MANY_TO_MANY
+        confidenceScore:
+          type: string
+          title: confidence_score
+          description: decimal, string-encoded
+        sourceTransactionIds:
+          type: array
+          items:
+            type: string
+          title: source_transaction_ids
+        targetTransactionIds:
+          type: array
+          items:
+            type: string
+          title: target_transaction_ids
+        matchedAt:
+          title: matched_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: SuggestedMatch
+      additionalProperties: false
+    jengine.v1.TagRootCauseRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        category:
+          type: string
+          title: category
+        actor:
+          title: actor
+          $ref: '#/components/schemas/jengine.v1.Actor'
+      title: TagRootCauseRequest
+      additionalProperties: false
+    jengine.v1.TagRootCauseResponse:
+      type: object
+      title: TagRootCauseResponse
+      additionalProperties: false
+    jengine.v1.Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        accountId:
+          type: string
+          title: account_id
+        externalRef:
+          type: string
+          title: external_ref
+        amount:
+          type: string
+          title: amount
+          description: decimal, string-encoded - never float
+        currency:
+          type: string
+          title: currency
+        baseAmount:
+          type: string
+          title: base_amount
+        valueDate:
+          title: value_date
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        bookingDate:
+          title: booking_date
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        description:
+          type: string
+          title: description
+        counterpartyRef:
+          type: string
+          title: counterparty_ref
+        side:
+          type: string
+          title: side
+          description: DEBIT|CREDIT
+        status:
+          type: string
+          title: status
+          description: UNMATCHED|MATCHED|PARTIALLY_MATCHED|EXCEPTION
+        createdAt:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: Transaction
+      additionalProperties: false
+      description: |-
+        Transaction is read-only via this API for MVP - no direct mutation
+         endpoint (plans/task/core/15 Implementation Notes).
+    jengine.v1.TransactionEvent:
+      type: object
+      properties:
+        tenantId:
+          type: string
+          title: tenant_id
+        transactionId:
+          type: string
+          title: transaction_id
+        accountId:
+          type: string
+          title: account_id
+        valueDate:
+          title: value_date
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        amount:
+          title: amount
+          $ref: '#/components/schemas/jengine.v1.Money'
+        externalRef:
+          type: string
+          title: external_ref
+        counterpartyRef:
+          type: string
+          title: counterparty_ref
+        sourceMode:
+          title: source_mode
+          $ref: '#/components/schemas/jengine.v1.SourceMode'
+        idempotencyKey:
+          type: string
+          title: idempotency_key
+        rawPayload:
+          title: raw_payload
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: TransactionEvent
+      additionalProperties: false
+      description: |-
+        TransactionEvent is the canonical event schema for
+         normalized.transactions.<shard> (plans/docs/06-streaming-architecture.md
+         §7.2) - the source of truth for both the Kafka event contract and,
+         via the outbox pattern (task 18), what a Debezium outbox-router SMT
+         serializes onto the topic.
+    jengine.v1.TransitionBreakRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        toStatus:
+          type: string
+          title: to_status
+        actor:
+          title: actor
+          $ref: '#/components/schemas/jengine.v1.Actor'
+        comment:
+          type: string
+          title: comment
+      title: TransitionBreakRequest
+      additionalProperties: false
+    jengine.v1.TransitionBreakResponse:
+      type: object
+      title: TransitionBreakResponse
+      additionalProperties: false
+    jengine.v1.UpdateSubscriptionStatusRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        status:
+          type: string
+          title: status
+      title: UpdateSubscriptionStatusRequest
+      additionalProperties: false
+    jengine.v1.UpdateSubscriptionStatusResponse:
+      type: object
+      properties:
+        subscription:
+          title: subscription
+          $ref: '#/components/schemas/jengine.v1.WebhookSubscription'
+      title: UpdateSubscriptionStatusResponse
+      additionalProperties: false
+    jengine.v1.WebhookDelivery:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        subscriptionId:
+          type: string
+          title: subscription_id
+        eventId:
+          type: string
+          title: event_id
+        eventType:
+          type: string
+          title: event_type
+        attemptCount:
+          type: integer
+          title: attempt_count
+          format: int32
+        status:
+          type: string
+          title: status
+          description: PENDING | DELIVERED | FAILED | DEAD_LETTERED
+        lastAttemptAt:
+          title: last_attempt_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        nextAttemptAt:
+          title: next_attempt_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        responseStatus:
+          type: integer
+          title: response_status
+          format: int32
+        responseBodySnippet:
+          type: string
+          title: response_body_snippet
+        createdAt:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: WebhookDelivery
+      additionalProperties: false
+      description: |-
+        WebhookDelivery mirrors domain.WebhookDelivery - the DLQ/redrive
+         backend's own view of one delivery attempt history row.
+    jengine.v1.WebhookSubscription:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        url:
+          type: string
+          title: url
+        secretRef:
+          type: string
+          title: secret_ref
+        eventTypes:
+          type: array
+          items:
+            type: string
+          title: event_types
+        filterExpr:
+          type: string
+          title: filter_expr
+        status:
+          type: string
+          title: status
+          description: ACTIVE | PAUSED | DISABLED
+        createdAt:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        updatedAt:
+          title: updated_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: WebhookSubscription
+      additionalProperties: false
+      description: |-
+        WebhookSubscription mirrors domain.WebhookSubscription
+         (plans/task/core/21). SecretRef is a Vault path reference, never an
+         inline secret - never returned in a Create/Get response body with its
+         resolved value, only the reference string itself.
+security: []
+tags:
+  - name: jengine.v1.AccountService
+  - name: jengine.v1.BreakService
+  - name: jengine.v1.MatchReviewService
+  - name: jengine.v1.MatchRuleService
+  - name: jengine.v1.StatementService
+  - name: jengine.v1.TransactionService
+  - name: jengine.v1.WebhookService

@@ -1,13 +1,16 @@
 .PHONY: build test lint vet fmt tidy clean lint-tenancy \
 	dev-up dev-down dev-down-volumes dev-logs migrate seed create-topics \
 	streaming-up register-connectors opa-test citus-up citus-down \
-	test-unit test-integration test-golden ci \
+	test-unit test-integration test-golden ci proto-gen \
 	web-dev web-build web-lint
 
 # --- Task 01: core build/lint/test automation ---------------------------
 
 build: ## Build every cmd/* binary; fails fast on any compile error.
 	go build ./cmd/...
+
+proto-gen: ## Regenerate gen/go (protoc-gen-go/connect-go) + gen/openapi (Swagger/OpenAPI) from proto/*.proto.
+	buf generate
 
 vet:
 	go vet ./...

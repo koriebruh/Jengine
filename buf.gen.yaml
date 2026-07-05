@@ -6,3 +6,18 @@ plugins:
   - local: protoc-gen-connect-go
     out: gen/go
     opt: paths=source_relative
+  # OpenAPI/Swagger spec for the Connect-RPC API surface. google/gnostic's
+  # generic protoc-gen-openapi was tried first and emitted an empty spec
+  # (paths: {}) - it only generates paths from google.api.http annotations
+  # (grpc-gateway convention), which these .proto files don't have (plain
+  # RPC-style services, not resource-oriented paths per
+  # plans/docs/07-api-extensibility.md §8.1's original intent - a
+  # separate, pre-existing gap, not introduced here). protoc-gen-connect-
+  # openapi is built specifically for Connect-RPC: it reflects Connect's
+  # actual default routing (POST /<package>.<Service>/<Method>, unary
+  # RPCs, Connect's own error-response shape) with no annotations needed.
+  - local: protoc-gen-connect-openapi
+    out: gen/openapi
+    opt:
+      - path=openapi.yaml
+      - features=connectrpc
