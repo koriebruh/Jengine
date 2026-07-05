@@ -213,6 +213,15 @@ func main() {
 	breakHandler := &apiserver.BreakServiceHandler{Pool: appPool, Cases: postgres.NewCaseRepo(), Lifecycle: lifecycle, Idempotency: idempotency}
 	mux.Handle(jenginev1connect.NewBreakServiceHandler(breakHandler, handlerOpts...))
 
+	// plans/task/core/21: WebhookService added independently beside the
+	// services above - not modifying any of their definitions/handlers,
+	// per that task's own scoping instruction.
+	webhookServiceHandler := &apiserver.WebhookServiceHandler{
+		Pool: appPool, Subscriptions: postgres.NewWebhookSubscriptionRepo(), Deliveries: postgres.NewWebhookDeliveryRepo(),
+		StreamTokenSecret: envOrDefault("STREAM_TOKEN_SECRET", "dev-only-insecure-stream-token-secret"),
+	}
+	mux.Handle(jenginev1connect.NewWebhookServiceHandler(webhookServiceHandler, handlerOpts...))
+
 	// Top-level mux: the Connect-RPC API is tenancy.Middleware-gated
 	// (JWT/API-key), but plans/task/core/18's webhook-receiver connector
 	// is its OWN auth path (per-connector HMAC signature, no tenant JWT -

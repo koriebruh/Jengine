@@ -2,6 +2,47 @@
 
 Holds only currently-open issues. Fix + re-verify → delete the entry, don't check it off.
 
+## `cmd/webhook-dispatcher` consumes `case.events.default`/`matching.results.default`, not `webhook.outbox`
+
+**Found in:** plans/task/core/21 (webhook system), while building the
+dispatcher's Kafka consumer.
+
+**Issue:** plans/task/core/21's own text says "`cmd/webhook-dispatcher`
+consumes `webhook.outbox`" - matching plans/task/core/18's topic table,
+which describes `webhook.outbox` as the topic for webhook delivery
+routing. But tasks 19/20's actual `EmitOutboxEventActivity`/
+`reconcile.Reconciler` calls (already committed) write every cataloged
+event - `break.created`, `break.assigned`, `match.auto_confirmed`,
+`break.sla_warning`, etc. - to `Topic: "case.events.default"`
+(reconcile.go) or a caller-supplied topic that's also
+`case.events.default` in every wiring done so far (workflow's own
+Activities). Nothing publishes to `webhook.outbox` at all.
+
+**Resolution taken:** the dispatcher consumes `case.events.default` and
+`matching.results.default` directly (where events actually land) rather
+than `webhook.outbox` (which is empty) - the pragmatic fix, since these
+are also exactly the topics plans/task/core/21's OWN SSE-gateway
+subsection needs to consume for the same event catalog, meaning the
+"real" topic split may simply be case-events-serve-both-SSE-and-webhook-
+delivery rather than a third topic in between. `webhook.outbox` remains
+provisioned (task 18's `create-topics.sh`) but unused.
+
+**Resolution options for a human decision:**
+1. Formalize case.events.default/matching.results.default as the ONE
+   shared topic family both SSE and webhook delivery consume (what's
+   actually built) - retire `webhook.outbox` from the topic list
+   entirely, treating plans/task/core/18/21's own text as superseded by
+   how tasks 19-21 actually converged.
+2. Retrofit tasks 19/20's Activities to ALSO (or instead) write to
+   `webhook.outbox` specifically for webhook-catalogable events, keeping
+   case.events.default for internal/SSE consumption only - closer to the
+   original three-topic design, but requires touching already-committed
+   task 19/20 code for a routing concern outside those tasks' own scope.
+
+Not resolved here since it's a genuine topic-design question spanning
+three already-built tasks (18, 19, 20), not something to resolve
+unilaterally while implementing the dispatcher's consumption side.
+
 ## No ingestion-pipeline stage publishes to `normalized.transactions.<shard>` yet
 
 **Found in:** plans/task/core/19 (streaming matching worker), while

@@ -126,6 +126,37 @@ type CaseRoutingConfigRepository interface {
 	Create(ctx context.Context, tenantID uuid.UUID, c CaseRoutingConfig) (CaseRoutingConfig, error)
 }
 
+// WebhookSubscriptionRepository covers WebhookSubscription
+// (plans/task/core/21).
+type WebhookSubscriptionRepository interface {
+	Create(ctx context.Context, tenantID uuid.UUID, s WebhookSubscription) (WebhookSubscription, error)
+	GetByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (WebhookSubscription, error)
+	ListByTenant(ctx context.Context, tenantID uuid.UUID) ([]WebhookSubscription, error)
+	// ListActiveByEventType is the dispatcher's own lookup - every
+	// ACTIVE subscription for tenantID whose event_types includes
+	// eventType (FilterExpr matching happens in Go, not SQL - see
+	// internal/notify).
+	ListActiveByEventType(ctx context.Context, tenantID uuid.UUID, eventType string) ([]WebhookSubscription, error)
+	UpdateStatus(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, status WebhookSubscriptionStatus) error
+}
+
+// WebhookDeliveryRepository covers WebhookDelivery (plans/task/core/21).
+type WebhookDeliveryRepository interface {
+	Create(ctx context.Context, tenantID uuid.UUID, d WebhookDelivery) (WebhookDelivery, error)
+	GetByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (WebhookDelivery, error)
+	ListByStatus(ctx context.Context, tenantID uuid.UUID, status WebhookDeliveryStatus) ([]WebhookDelivery, error)
+	// UpdateAfterAttempt records one delivery attempt's outcome -
+	// attemptCount/status/last+next attempt time/response snapshot,
+	// all updated together since they're only ever written as a unit
+	// (plans/task/core/21's own WebhookDelivery shape).
+	UpdateAfterAttempt(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, attemptCount int, status WebhookDeliveryStatus, lastAttemptAt time.Time, nextAttemptAt *time.Time, responseStatus *int, responseBodySnippet *string) error
+	// Redrive resets attempt_count to 0 and status to PENDING with
+	// next_attempt_at = now - plans/task/core/21's
+	// WebhookService.RedriveDelivery: "resets attempt_count and
+	// requeues immediately."
+	Redrive(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error
+}
+
 type ConnectorRepository interface {
 	Create(ctx context.Context, tenantID uuid.UUID, c Connector) (Connector, error)
 	GetByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (Connector, error)

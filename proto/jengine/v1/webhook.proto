@@ -1,0 +1,113 @@
+syntax = "proto3";
+
+package jengine.v1;
+
+import "google/protobuf/timestamp.proto";
+import "jengine/v1/common.proto";
+
+option go_package = "github.com/koriebruh/Jengine/gen/go/jengine/v1;jenginev1";
+
+// WebhookSubscription mirrors domain.WebhookSubscription
+// (plans/task/core/21). SecretRef is a Vault path reference, never an
+// inline secret - never returned in a Create/Get response body with its
+// resolved value, only the reference string itself.
+message WebhookSubscription {
+  string id = 1;
+  string url = 2;
+  string secret_ref = 3;
+  repeated string event_types = 4;
+  string filter_expr = 5;
+  string status = 6; // ACTIVE | PAUSED | DISABLED
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// WebhookDelivery mirrors domain.WebhookDelivery - the DLQ/redrive
+// backend's own view of one delivery attempt history row.
+message WebhookDelivery {
+  string id = 1;
+  string subscription_id = 2;
+  string event_id = 3;
+  string event_type = 4;
+  int32 attempt_count = 5;
+  string status = 6; // PENDING | DELIVERED | FAILED | DEAD_LETTERED
+  google.protobuf.Timestamp last_attempt_at = 7;
+  google.protobuf.Timestamp next_attempt_at = 8;
+  int32 response_status = 9;
+  string response_body_snippet = 10;
+  google.protobuf.Timestamp created_at = 11;
+}
+
+message CreateSubscriptionRequest {
+  string url = 1;
+  string secret_ref = 2;
+  repeated string event_types = 3;
+  string filter_expr = 4;
+}
+
+message CreateSubscriptionResponse {
+  WebhookSubscription subscription = 1;
+}
+
+message ListSubscriptionsRequest {
+  PageRequest page = 1;
+}
+
+message ListSubscriptionsResponse {
+  repeated WebhookSubscription subscriptions = 1;
+  PageResponse page = 2;
+}
+
+message UpdateSubscriptionStatusRequest {
+  string id = 1;
+  string status = 2;
+}
+
+message UpdateSubscriptionStatusResponse {
+  WebhookSubscription subscription = 1;
+}
+
+message ListDeliveriesRequest {
+  string status = 1; // empty = no filter
+  string subscription_id = 2;
+  PageRequest page = 3;
+}
+
+message ListDeliveriesResponse {
+  repeated WebhookDelivery deliveries = 1;
+  PageResponse page = 2;
+}
+
+// RedriveDelivery resets attempt_count and requeues immediately
+// (plans/task/core/21 Implementation Notes) - the Tenant Admin
+// frontend's DLQ redrive button calls this; building that UI is out of
+// scope here, this RPC must be fully functional standalone.
+message RedriveDeliveryRequest {
+  string id = 1;
+}
+
+message RedriveDeliveryResponse {
+  WebhookDelivery delivery = 1;
+}
+
+// MintStreamTokenRequest/Response back the SSE gateway's auth story
+// (plans/task/core/21's SSE/WS gateway subsection): browser EventSource
+// can't set an Authorization header, so a short-lived, stream-scoped
+// token is minted via this normal bearer-authenticated RPC, then passed
+// as a query parameter to GET /v1/tenants/{tenant_id}/events/stream -
+// never a long-lived API token in a URL.
+message MintStreamTokenRequest {}
+
+message MintStreamTokenResponse {
+  string token = 1;
+  google.protobuf.Timestamp expires_at = 2;
+}
+
+service WebhookService {
+  rpc CreateSubscription(CreateSubscriptionRequest) returns (CreateSubscriptionResponse);
+  rpc ListSubscriptions(ListSubscriptionsRequest) returns (ListSubscriptionsResponse);
+  rpc UpdateSubscriptionStatus(UpdateSubscriptionStatusRequest) returns (UpdateSubscriptionStatusResponse);
+  rpc ListDeliveries(ListDeliveriesRequest) returns (ListDeliveriesResponse);
+  rpc RedriveDelivery(RedriveDeliveryRequest) returns (RedriveDeliveryResponse);
+  rpc MintStreamToken(MintStreamTokenRequest) returns (MintStreamTokenResponse);
+}
