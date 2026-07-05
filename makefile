@@ -1,6 +1,6 @@
 .PHONY: build test lint vet fmt tidy clean lint-tenancy \
 	dev-up dev-down dev-down-volumes dev-logs migrate seed create-topics \
-	streaming-up register-connectors \
+	streaming-up register-connectors opa-test \
 	test-unit test-integration test-golden ci \
 	web-dev web-build web-lint
 
@@ -22,6 +22,15 @@ lint: vet lint-tenancy
 # repository packages.
 lint-tenancy:
 	go run ./internal/platform/lint/tenantcheck/cmd/tenantcheck ./internal/storage/postgres/...
+
+# Task 23: OPA CLI binary (no distro package; installed to ~/.local/bin
+# per this repo's own convention for tools without a native package -
+# same as mcp-clickhouse's uvx). Override with `make opa-test OPA_BIN=opa`
+# if it's on PATH in your environment.
+OPA_BIN ?= $(HOME)/.local/bin/opa
+
+opa-test:
+	$(OPA_BIN) test deploy/opa/policies/ -v
 
 test:
 	go test -race ./...

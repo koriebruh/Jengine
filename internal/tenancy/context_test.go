@@ -2,6 +2,7 @@ package tenancy_test
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/google/uuid"
@@ -22,7 +23,7 @@ func TestWithTenant_RoundTrip(t *testing.T) {
 	if !ok {
 		t.Fatal("expected TenantFromContext to find the tenant, got ok=false")
 	}
-	if got != want {
+	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
 }
@@ -39,7 +40,7 @@ func TestMustTenantFromContext_ReturnsWhenPresent(t *testing.T) {
 	ctx := tenancy.WithTenant(context.Background(), want)
 
 	got := tenancy.MustTenantFromContext(ctx)
-	if got != want {
+	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
 }

@@ -1,0 +1,11 @@
+-- plans/task/core/23 §10.1/§10.3, plans/docs/01-multi-tenancy.md §2.3:
+-- per-tenant KEK reference for S3 SSE-KMS envelope encryption. This
+-- field was assumed already present by task 23's own text ("building
+-- on the DEK/KEK schema fields already present from tenancy work") but
+-- was never actually added by task 04 - a small, unambiguous gap
+-- (missing column, not a design contradiction), fixed directly here
+-- per plans/task/OPERATING_INSTRUCTIONS.md's guidance on such gaps.
+-- Nullable: a KEK is provisioned per-tenant out-of-band (KMS/Vault
+-- Transit) - not every tenant necessarily has SSE-KMS-backed writes
+-- enabled yet.
+ALTER TABLE tenants ADD COLUMN kek_reference text;

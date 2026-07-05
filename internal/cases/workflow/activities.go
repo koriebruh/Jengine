@@ -20,6 +20,7 @@ package workflow
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,6 +28,7 @@ import (
 
 	"github.com/koriebruh/Jengine/internal/audit"
 	"github.com/koriebruh/Jengine/internal/domain"
+	"github.com/koriebruh/Jengine/internal/platform/authz"
 )
 
 // Actor mirrors cases.Actor's shape.
@@ -61,6 +63,11 @@ type Activities struct {
 	// wiring, matching internal/matching/reconcile's own use of
 	// outbox.Insert as the precedent for this pattern.
 	InsertOutbox InsertOutbox
+	// OPAClient backs AuthorizeApprovalActivity's real policy decision
+	// (plans/task/core/23) - a platform package, safe to import directly
+	// here (no cycle: internal/platform/authz never imports domain
+	// packages).
+	OPAClient authz.OPAClient
 }
 
 // --- AutoAssignActivity (plans/docs/05-case-management.md §6.2) ---
@@ -173,22 +180,39 @@ type AuthorizeApprovalResult struct {
 	Reason     string
 }
 
-// AuthorizeApprovalActivity is a SIMPLE ROLE-CHECK STUB by design
-// (plans/task/core/20 Implementation Notes: "core task 23 later swaps
-// the activity's internals for a real OPA/Rego-backed decision. Keep
-// the Activity's function signature stable across that swap"). Checks
-// only maker != checker and a coarse role allowlist - no per-account/
-// business-unit ABAC (that's task 23).
-func (a *Activities) AuthorizeApprovalActivity(_ context.Context, in AuthorizeApprovalInput) (AuthorizeApprovalResult, error) {
-	if in.ApproverUserID == in.MakerUserID {
-		return AuthorizeApprovalResult{Authorized: false, Reason: "maker != checker violation: approver is the same user who made the request"}, nil
+// AuthorizeApprovalActivity calls the real OPA policy
+// (deploy/opa/policies/authz.rego) via a.OPAClient - plans/task/core/20
+// shipped this as a simple role-check stub with a documented seam
+// ("core task 23 later swaps the activity's internals for a real
+// OPA/Rego-backed decision. Keep the Activity's function signature
+// stable across that swap"); this is that swap. Signature is
+// unchanged, so BreakLifecycleWorkflow/ApprovalWorkflow need zero
+// modification.
+func (a *Activities) AuthorizeApprovalActivity(ctx context.Context, in AuthorizeApprovalInput) (AuthorizeApprovalResult, error) {
+	decision, err := a.OPAClient.Evaluate(ctx, authz.OPAInput{
+		Subject: authz.Subject{
+			UserID:   in.ApproverUserID,
+			TenantID: in.TenantID.String(),
+			Roles:    []authz.Role{normalizeRole(in.ApproverRole)},
+		},
+		Action:   "case.approve",
+		Resource: authz.ResourceRef{TenantID: in.TenantID.String(), MakerUserID: in.MakerUserID},
+	})
+	if err != nil {
+		return AuthorizeApprovalResult{}, fmt.Errorf("workflow: evaluate approval authorization policy: %w", err)
 	}
-	switch in.ApproverRole {
-	case "Approver", "Recon Manager", "Tenant Admin":
-		return AuthorizeApprovalResult{Authorized: true}, nil
-	default:
-		return AuthorizeApprovalResult{Authorized: false, Reason: fmt.Sprintf("role %q is not authorized to approve", in.ApproverRole)}, nil
-	}
+	return AuthorizeApprovalResult{Authorized: decision.Allow, Reason: decision.Reason}, nil
+}
+
+// normalizeRole converts cases.Actor's free-form, client-supplied role
+// string (plans/task/core/15 Non-Goals: "Actor identity is a client-
+// supplied request field at MVP" - e.g. "Approver", "Recon Manager")
+// into the structured snake_case authz.Role deploy/opa/policies/authz.rego
+// matches against (e.g. "approver", "recon_manager"). Existing callers/
+// tests that pre-date this task keep working without every call site
+// switching to the authz.Role constants directly.
+func normalizeRole(role string) authz.Role {
+	return authz.Role(strings.ToLower(strings.ReplaceAll(role, " ", "_")))
 }
 
 // --- PersistTransitionActivity ---

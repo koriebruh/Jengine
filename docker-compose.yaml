@@ -162,6 +162,27 @@ services:
     networks:
       - jengine-dev
 
+  # plans/task/core/23: OPA sidecar - one process per environment here
+  # (matches "opa run --server" per-pod in production), policy bundle
+  # bind-mounted from deploy/opa/policies/ read-only so a policy change
+  # is picked up on container restart without a rebuild.
+  opa:
+    image: openpolicyagent/opa:latest
+    container_name: jengine-opa
+    restart: unless-stopped
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "/policies"]
+    ports:
+      - "${OPA_PORT:-8181}:8181"
+    volumes:
+      - ./deploy/opa/policies:/policies:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:8181/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - jengine-dev
+
   minio:
     image: minio/minio:latest
     container_name: jengine-minio
@@ -199,6 +220,31 @@ services:
       mc mb -p local/${MINIO_BUCKET_AUDIT:-jengine-audit-archive} &&
       echo 'buckets ready'
       "
+    networks:
+      - jengine-dev
+
+  # plans/task/core/23: dev-mode Vault, the "fake/dev Vault" local-dev
+  # story plans/docs/16-development-workflow.md §16.2 already calls for
+  # (tenant secrets/tokenization vault use Vault path references, never
+  # inline storage - this is what actually resolves them locally). Dev
+  # mode only: in-memory, unsealed, fixed root token - never use this
+  # config outside local dev.
+  vault:
+    image: hashicorp/vault:latest
+    container_name: jengine-vault
+    restart: unless-stopped
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN:-jengine-dev-root-token}
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    ports:
+      - "${VAULT_PORT:-8200}:8200"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:8200/v1/sys/health?standbyok=true || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     networks:
       - jengine-dev
 

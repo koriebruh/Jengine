@@ -2,6 +2,46 @@
 
 Holds only currently-open issues. Fix + re-verify → delete the entry, don't check it off.
 
+## S3 SSE-KMS (`objectstore.MinIOStore.PutEncrypted`) has no KMS-backed deployment to actually encrypt against
+
+**Found in:** plans/task/core/23 (security hardening), while wiring
+`ObjectStore.PutEncrypted`.
+
+**Issue:** the design (plans/docs/09-security-compliance.md §10.1) calls
+for S3 writes to use SSE-KMS with each tenant's own KEK. `PutEncrypted`
+is implemented correctly against minio-go's real SSE-KMS API, and
+`tenants.kek_reference` (migrations/0014) now exists as the schema
+field to source a key ID from - but the local dev docker-compose MinIO
+has no KMS backend (MinIO KES + Vault Transit, or equivalent)
+configured, so `PutEncrypted` fails with a real server-side error
+("Server side encryption specified but KMS is not configured") rather
+than silently writing unencrypted - confirmed via
+`internal/ingestion/objectstore/objectstore_test.go`'s own test against
+the real local MinIO.
+
+Also: nothing in this codebase currently calls `ObjectStore.Put` (or
+now `PutEncrypted`) at all - statement-file/audit-archive object
+storage WRITES aren't wired into any real ingestion/archival flow yet
+(only `Get`, for already-uploaded files, has a real caller). This
+predates task 23; not something to invent a caller for unilaterally
+here.
+
+**Resolution options for a human decision:**
+1. Stand up MinIO KES + a KMS backend (Vault Transit is the natural
+   choice given Vault is already in this stack for tokenization/
+   secrets) as infra work - same category as this task's own Non-Goal
+   carve-out for service-mesh installation - then wire a real caller
+   for statement-file archival through `PutEncrypted` with the
+   tenant's `kek_reference`.
+2. Accept SSE-C (customer-provided key, no KMS backend needed) as the
+   MVP-scale mechanism instead of SSE-KMS if standing up KES isn't
+   justified yet, revisiting SSE-KMS at V1/V2 once a real archival
+   write path exists to justify the operational cost.
+
+Not resolved here since it requires infra provisioning decisions
+(KES/Vault Transit topology) outside this task's Go code scope, and
+there's no real caller yet to validate the choice against.
+
 ## `cmd/webhook-dispatcher` consumes `case.events.default`/`matching.results.default`, not `webhook.outbox`
 
 **Found in:** plans/task/core/21 (webhook system), while building the

@@ -10,6 +10,7 @@ import (
 
 	"github.com/koriebruh/Jengine/internal/domain"
 	"github.com/koriebruh/Jengine/internal/ingestion/pipeline"
+	"github.com/koriebruh/Jengine/internal/platform/tokenization"
 )
 
 // MappingSpecLookup is the surface MappingEngine needs -
@@ -48,6 +49,11 @@ type cachedSpec struct {
 type MappingEngine struct {
 	Specs    MappingSpecLookup
 	TxRunner TxRunner
+	// Tokenizer backs the `tokenize` transform (plans/task/core/23) - nil
+	// is fine for tenants/specs that never use it; a spec that DOES use
+	// `tokenize` with a nil Tokenizer fails loudly per-record (see
+	// tokenize's own doc comment), not silently.
+	Tokenizer tokenization.TokenizationService
 
 	cacheMu sync.RWMutex
 	cache   map[string]cachedSpec
@@ -88,7 +94,10 @@ func (e *MappingEngine) Process(ctx context.Context, rec *pipeline.PipelineRecor
 			if call.HasArg {
 				args = []string{call.Arg}
 			}
-			value, err = fn(TransformContext{Record: rec.ParsedFields}, value, args...)
+			value, err = fn(TransformContext{
+				Record: rec.ParsedFields, Ctx: ctx, TenantID: tenantID.String(),
+				Tokenizer: e.Tokenizer, TargetField: fm.Target,
+			}, value, args...)
 			if err != nil {
 				return pipeline.StageQuarantine, fmt.Errorf("field_mapping: target %q: transform %q: %w", fm.Target, call.Name, err)
 			}

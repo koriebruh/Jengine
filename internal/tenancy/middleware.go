@@ -21,13 +21,17 @@ var (
 	ErrInvalidToken  = errors.New("tenancy: invalid or expired token")
 )
 
-// Claims is the JWT claim set this middleware reads. Room is left for an
-// actor/role claim later (plans/docs/09-security-compliance.md §10.3)
-// without a breaking change to this struct - RBAC/OPA evaluation itself is
-// plans/task/core/23 (V1), not built here; see Non-Goals.
+// Claims is the JWT claim set this middleware reads. UserID/Roles/
+// BusinessUnit (plans/task/core/23) are the actor/role claims task 15
+// left room for without a breaking change to this struct - they feed
+// authz.Subject for OPA evaluation, not used by tenancy itself beyond
+// threading them into TenantContext.
 type Claims struct {
 	jwt.RegisteredClaims
-	TenantID string `json:"tenant_id"`
+	TenantID     string   `json:"tenant_id"`
+	UserID       string   `json:"user_id"`
+	Roles        []string `json:"roles"`
+	BusinessUnit string   `json:"business_unit"`
 }
 
 // Middleware resolves tenant identity per request (JWT bearer token or
@@ -51,7 +55,7 @@ func NewMiddleware(registry RegistryRepo, jwtSecret []byte) *Middleware {
 // invalid/missing credentials never reach application code or the DB.
 func (m *Middleware) Wrap(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tenant, err := m.resolveTenant(r)
+		tenant, act, err := m.resolveTenant(r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
@@ -61,6 +65,9 @@ func (m *Middleware) Wrap(next http.Handler) http.Handler {
 			TenantID:      tenant.ID,
 			IsolationTier: tenant.IsolationTier,
 			Region:        tenant.Region,
+			UserID:        act.userID,
+			Roles:         act.roles,
+			BusinessUnit:  act.businessUnit,
 		}
 
 		// Isolation config is optional at MVP (every tenant resolves to
@@ -77,23 +84,36 @@ func (m *Middleware) Wrap(next http.Handler) http.Handler {
 	})
 }
 
-func (m *Middleware) resolveTenant(r *http.Request) (Tenant, error) {
+// actor is the JWT-derived identity threaded into TenantContext -
+// empty (zero value) for API-key auth, which per plans/docs/09's own
+// RBAC role list identifies as the "API Integration Role" rather than
+// an individual user.
+type actor struct {
+	userID       string
+	roles        []string
+	businessUnit string
+}
+
+var apiIntegrationActor = actor{roles: []string{"api_integration"}}
+
+func (m *Middleware) resolveTenant(r *http.Request) (Tenant, actor, error) {
 	if apiKey := r.Header.Get("X-API-Key"); apiKey != "" {
-		return m.resolveByAPIKey(r.Context(), apiKey)
+		tenant, err := m.resolveByAPIKey(r.Context(), apiKey)
+		return tenant, apiIntegrationActor, err
 	}
 
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
-		return Tenant{}, ErrMissingAuth
+		return Tenant{}, actor{}, ErrMissingAuth
 	}
 	tokenStr, found := strings.CutPrefix(authHeader, "Bearer ")
 	if !found {
-		return Tenant{}, ErrMalformedAuth
+		return Tenant{}, actor{}, ErrMalformedAuth
 	}
 	return m.resolveByJWT(r.Context(), tokenStr)
 }
 
-func (m *Middleware) resolveByJWT(ctx context.Context, tokenStr string) (Tenant, error) {
+func (m *Middleware) resolveByJWT(ctx context.Context, tokenStr string) (Tenant, actor, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("tenancy: unexpected signing method %v", t.Header["alg"])
@@ -101,21 +121,22 @@ func (m *Middleware) resolveByJWT(ctx context.Context, tokenStr string) (Tenant,
 		return m.jwtSecret, nil
 	})
 	if err != nil || !token.Valid {
-		return Tenant{}, ErrInvalidToken
+		return Tenant{}, actor{}, ErrInvalidToken
 	}
 	claims, ok := token.Claims.(*Claims)
 	if !ok || claims.TenantID == "" {
-		return Tenant{}, ErrInvalidToken
+		return Tenant{}, actor{}, ErrInvalidToken
 	}
 	tenantID, err := uuid.Parse(claims.TenantID)
 	if err != nil {
-		return Tenant{}, ErrInvalidToken
+		return Tenant{}, actor{}, ErrInvalidToken
 	}
 	tenant, err := m.registry.GetTenant(ctx, tenantID)
 	if err != nil {
-		return Tenant{}, ErrInvalidToken
+		return Tenant{}, actor{}, ErrInvalidToken
 	}
-	return tenant, nil
+	act := actor{userID: claims.UserID, roles: claims.Roles, businessUnit: claims.BusinessUnit}
+	return tenant, act, nil
 }
 
 func (m *Middleware) resolveByAPIKey(ctx context.Context, apiKey string) (Tenant, error) {

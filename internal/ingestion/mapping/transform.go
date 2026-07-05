@@ -1,6 +1,7 @@
 package mapping
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strings"
@@ -8,14 +9,27 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+
+	"github.com/koriebruh/Jengine/internal/platform/tokenization"
 )
 
 // TransformContext gives a transform function access to sibling fields on
 // the record being mapped - needed by transforms like apply_sign_from
 // that reference another field rather than operating purely on their own
 // input value.
+//
+// Ctx/TenantID/Tokenizer (plans/task/core/23) exist only for the
+// `tokenize` transform, which needs a real network call (Vault) and
+// tenant scoping - added as fields here rather than changing
+// TransformFunc's signature (a context.Context parameter on every
+// transform would be a breaking change to every existing transform
+// function for a need only one of them has).
 type TransformContext struct {
-	Record map[string]any
+	Record      map[string]any
+	Ctx         context.Context
+	TenantID    string
+	Tokenizer   tokenization.TokenizationService
+	TargetField string
 }
 
 // TransformFunc is one named, chainable transform step. args holds at
@@ -34,6 +48,7 @@ var (
 		"iso4217_validate": iso4217Validate,
 		"parse_date":       parseDate,
 		"extract_regex":    extractRegex,
+		"tokenize":         tokenize,
 	}
 )
 
@@ -219,6 +234,29 @@ func extractRegex(ctx TransformContext, value any, args ...string) (any, error) 
 		return nil, fmt.Errorf("extract_regex: pattern %q did not match (with a capture group) against %q", args[0], s)
 	}
 	return m[1], nil
+}
+
+// tokenize replaces value with an opaque vault-backed token
+// (plans/task/core/23, plans/docs/09-security-compliance.md §10.2) -
+// the technical control ensuring a tenant-tagged sensitive field (e.g.
+// a payment gateway's card_number) is never persisted in raw_payload
+// as-is. Requires ctx.Tokenizer/ctx.TenantID to be populated by the
+// caller (internal/ingestion/pipeline wiring) - a mapping spec that
+// uses this transform without a configured Tokenizer is a
+// configuration error, not silently skipped.
+func tokenize(ctx TransformContext, value any, args ...string) (any, error) {
+	if ctx.Tokenizer == nil {
+		return nil, fmt.Errorf("tokenize: no TokenizationService configured for this pipeline")
+	}
+	s, ok := value.(string)
+	if !ok {
+		return nil, fmt.Errorf("tokenize: expected a string, got %T", value)
+	}
+	token, err := ctx.Tokenizer.Tokenize(ctx.Ctx, ctx.TenantID, ctx.TargetField, s)
+	if err != nil {
+		return nil, fmt.Errorf("tokenize: %w", err)
+	}
+	return token, nil
 }
 
 // resolveFieldPath looks up a dot-separated path (e.g.

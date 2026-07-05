@@ -1,6 +1,7 @@
 package mapping_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -8,6 +9,21 @@ import (
 
 	"github.com/koriebruh/Jengine/internal/ingestion/mapping"
 )
+
+type fakeTokenizer struct{ tokens map[string]string }
+
+func (f *fakeTokenizer) Tokenize(ctx context.Context, tenantID, field, value string) (string, error) {
+	token := "tok_" + field + "_" + value
+	if f.tokens == nil {
+		f.tokens = make(map[string]string)
+	}
+	f.tokens[token] = value
+	return token, nil
+}
+
+func (f *fakeTokenizer) Detokenize(ctx context.Context, tenantID, token string) (string, error) {
+	return f.tokens[token], nil
+}
 
 func mustTransform(t *testing.T, name string) mapping.TransformFunc {
 	t.Helper()
@@ -197,6 +213,38 @@ func TestExtractRegex(t *testing.T) {
 	t.Run("invalid pattern errors", func(t *testing.T) {
 		if _, err := fn(mapping.TransformContext{}, "text", `(unterminated`); err == nil {
 			t.Fatal("expected an error for an invalid regex pattern")
+		}
+	})
+}
+
+func TestTokenize(t *testing.T) {
+	fn := mustTransform(t, "tokenize")
+
+	t.Run("replaces value with an opaque token", func(t *testing.T) {
+		tokenizer := &fakeTokenizer{}
+		ctx := mapping.TransformContext{
+			Ctx: context.Background(), TenantID: "tenant-1", Tokenizer: tokenizer, TargetField: "transaction.raw_payload.card_number",
+		}
+		got, err := fn(ctx, "4111111111111111")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		token, ok := got.(string)
+		if !ok || token == "4111111111111111" {
+			t.Errorf("expected a token distinct from the raw value, got %v", got)
+		}
+	})
+
+	t.Run("nil Tokenizer fails loudly rather than passing the value through", func(t *testing.T) {
+		if _, err := fn(mapping.TransformContext{}, "4111111111111111"); err == nil {
+			t.Fatal("expected an error when no Tokenizer is configured")
+		}
+	})
+
+	t.Run("non-string value errors", func(t *testing.T) {
+		ctx := mapping.TransformContext{Ctx: context.Background(), Tokenizer: &fakeTokenizer{}}
+		if _, err := fn(ctx, 12345); err == nil {
+			t.Fatal("expected an error for a non-string value")
 		}
 	})
 }

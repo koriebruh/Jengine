@@ -15,6 +15,7 @@ import (
 	"github.com/koriebruh/Jengine/internal/domain"
 	"github.com/koriebruh/Jengine/internal/matching/core"
 	"github.com/koriebruh/Jengine/internal/matching/rules"
+	"github.com/koriebruh/Jengine/internal/platform/authz"
 	"github.com/koriebruh/Jengine/internal/tenancy"
 )
 
@@ -27,6 +28,7 @@ type MatchRuleServiceHandler struct {
 	Rules       domain.MatchRuleRepository
 	Registry    core.ScoringRegistry
 	Idempotency IdempotencyStore
+	Authz       *authz.Middleware
 }
 
 func matchRuleToProto(r domain.MatchRule) *jenginev1.MatchRule {
@@ -136,12 +138,22 @@ func (h *MatchRuleServiceHandler) ActivateRule(ctx context.Context, req *connect
 				if err != nil {
 					return fmt.Errorf("load rule: %w", err)
 				}
-				// Maker-checker-lite (plans/docs/04-matching-engine.md §5.1,
-				// plans/task/core/15 Common Pitfalls: skipping this defeats
-				// the point even at MVP scale).
-				if req.Msg.ApprovedBy == "" || req.Msg.ApprovedBy == rule.CreatedBy {
-					return connect.NewError(connect.CodeInvalidArgument,
-						fmt.Errorf("apiserver: approved_by must be set and differ from created_by %q", rule.CreatedBy))
+				// approved_by must be present (basic request validation,
+				// not an authorization decision - OPA below decides WHO
+				// may approve, this just rejects an obviously-incomplete
+				// request before bothering to ask).
+				if req.Msg.ApprovedBy == "" {
+					return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("apiserver: approved_by must be set"))
+				}
+				// Maker-checker via real OPA policy (plans/task/core/23),
+				// evaluated against the AUTHENTICATED caller (not the
+				// client-supplied approved_by string, which is only the
+				// audit-trail value recorded below) - deploy/opa/policies/authz.rego's
+				// "rule.activate" rule enforces maker != checker plus role
+				// membership; replaces this handler's former inline Go
+				// if/else (this task's own named Common Pitfall).
+				if err := h.Authz.Authorize(ctx, "rule.activate", authz.ResourceRef{MakerUserID: rule.CreatedBy}); err != nil {
+					return err
 				}
 
 				// Archive the previously active version for this exact

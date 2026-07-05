@@ -20,12 +20,20 @@ const (
 // ShardID/SchemaName are present for forward-compatibility with V1 tiered
 // routing (plans/task/core/24) but unused at MVP - every tenant resolves
 // to the single local Standard-tier Postgres instance.
+//
+// UserID/Roles/BusinessUnit (plans/task/core/23) are the actor identity
+// resolved from the JWT (empty for API-key auth, which carries no
+// individual-user identity - see Middleware.resolveByAPIKey) - the
+// source authz.Subject is built from for OPA evaluation.
 type TenantContext struct {
 	TenantID      uuid.UUID
 	IsolationTier IsolationTier
 	ShardID       string
 	SchemaName    string
 	Region        string
+	UserID        string
+	Roles         []string
+	BusinessUnit  string
 }
 
 type ctxKey struct{}

@@ -32,6 +32,7 @@ import (
 	"github.com/koriebruh/Jengine/internal/ingestion/connector/sftp"
 	"github.com/koriebruh/Jengine/internal/ingestion/connector/webhookreceiver"
 	"github.com/koriebruh/Jengine/internal/matching/rules"
+	"github.com/koriebruh/Jengine/internal/platform/authz"
 	"github.com/koriebruh/Jengine/internal/platform/observability"
 	"github.com/koriebruh/Jengine/internal/platform/outbox"
 	"github.com/koriebruh/Jengine/internal/storage/postgres"
@@ -66,7 +67,7 @@ const temporalTaskQueue = "case-lifecycle"
 // process - plans/task/core/20's own deployment-topology note: no
 // separate cmd/case-worker binary, the task-queue poller runs alongside
 // the HTTP/Connect-RPC server started later in main().
-func setupTemporalWorker(appPool *pgxpool.Pool, txRunner cases.TxRunner, auditWriter audit.Writer) (*cases.TemporalLifecycleService, error) {
+func setupTemporalWorker(appPool *pgxpool.Pool, txRunner cases.TxRunner, auditWriter audit.Writer, opaClient authz.OPAClient) (*cases.TemporalLifecycleService, error) {
 	temporalHostPort := envOrDefault("TEMPORAL_HOSTPORT", "localhost:7233")
 	c, err := temporalclient.Dial(temporalclient.Options{HostPort: temporalHostPort})
 	if err != nil {
@@ -85,7 +86,7 @@ func setupTemporalWorker(appPool *pgxpool.Pool, txRunner cases.TxRunner, auditWr
 
 	activities := &caseworkflow.Activities{
 		TxRunner: caseworkflow.TxRunner(txRunner), Cases: postgres.NewCaseRepo(), Audit: auditWriter,
-		Routing: postgres.NewCaseRoutingConfigRepo(), InsertOutbox: insertOutbox,
+		Routing: postgres.NewCaseRoutingConfigRepo(), InsertOutbox: insertOutbox, OPAClient: opaClient,
 	}
 
 	w := temporalworker.New(c, temporalTaskQueue, temporalworker.Options{})
@@ -185,14 +186,21 @@ func main() {
 	transactionHandler := &apiserver.TransactionServiceHandler{Pool: appPool, Transactions: postgres.NewTransactionRepo()}
 	mux.Handle(jenginev1connect.NewTransactionServiceHandler(transactionHandler, handlerOpts...))
 
+	// plans/task/core/23: OPA sidecar (opa run --server, policy bundle
+	// from deploy/opa/policies/) - real RBAC/ABAC decisions, not inline
+	// Go role checks.
+	opaClient := authz.NewHTTPOPAClient(envOrDefault("OPA_URL", "http://localhost:8181"))
+	authzMiddleware := authz.NewMiddleware(opaClient)
+
 	matchRuleHandler := &apiserver.MatchRuleServiceHandler{
 		Pool: appPool, Rules: postgres.NewMatchRuleRepo(), Registry: rules.DefaultRegistry(), Idempotency: idempotency,
+		Authz: authzMiddleware,
 	}
 	mux.Handle(jenginev1connect.NewMatchRuleServiceHandler(matchRuleHandler, handlerOpts...))
 
 	postgresLifecycle := cases.NewPostgresLifecycleService(newCasesTxRunner(appPool), postgres.NewCaseRepo(), auditWriter)
 
-	temporalLifecycle, err := setupTemporalWorker(appPool, newCasesTxRunner(appPool), auditWriter)
+	temporalLifecycle, err := setupTemporalWorker(appPool, newCasesTxRunner(appPool), auditWriter, opaClient)
 	if err != nil {
 		log.Fatalf("coreapi: setup temporal worker: %v", err)
 	}

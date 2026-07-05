@@ -1,6 +1,7 @@
 package postgres_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -470,6 +471,86 @@ func TestTransactionRepo_BulkInsert(t *testing.T) {
 	}
 	if count != n {
 		t.Fatalf("expected %d queryable rows, got %d", n, count)
+	}
+}
+
+// TestTransactionRepo_RawPayloadEncryptedAtRest is plans/task/core/23's
+// DoD encryption test: querying the raw bytes of raw_payload directly
+// (bypassing TransactionRepo's own pgp_sym_decrypt-wrapped SELECTs)
+// must return ciphertext, not a plaintext match against the value
+// written - and TransactionRepo.GetByID (which DOES decrypt) must
+// recover the original value.
+func TestTransactionRepo_RawPayloadEncryptedAtRest(t *testing.T) {
+	if testing.Short() {
+		t.Skip("requires Docker - skipped under -short; run make test-integration")
+	}
+
+	db := testutil.StartPostgres(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenantID := uuid.New()
+	if _, err := db.Pool.Exec(ctx,
+		`INSERT INTO tenants (id, name, isolation_tier, region, status) VALUES ($1, 'Acme', 'STANDARD', 'us-east', 'ACTIVE')`,
+		tenantID,
+	); err != nil {
+		t.Fatalf("seed tenant failed: %v", err)
+	}
+	accountID := uuid.New()
+	if _, err := db.Pool.Exec(ctx,
+		`INSERT INTO accounts (id, tenant_id, external_account_ref, account_type, currency, name) VALUES ($1, $2, 'ACC-ENC', 'BANK', 'USD', 'Encryption Test Account')`,
+		accountID, tenantID,
+	); err != nil {
+		t.Fatalf("seed account failed: %v", err)
+	}
+
+	appPool := testutil.AppRolePool(t, ctx, db.DSN)
+	defer appPool.Close()
+
+	tenantCtx := tenancy.WithTenant(ctx, tenancy.TenantContext{TenantID: tenantID})
+	txRepo := postgres.NewTransactionRepo()
+
+	const sensitiveNarrative = `{"card_number":"4111111111111111","counterparty_name":"Jane Doe"}`
+	var created domain.Transaction
+	err := postgres.WithTx(tenantCtx, appPool, tenantID, func(ctx context.Context) error {
+		var err error
+		created, err = txRepo.Create(ctx, tenantID, domain.Transaction{
+			AccountID: accountID, ExternalRef: "ENC-1", Amount: decimal.NewFromInt(100), Currency: "USD",
+			BaseAmount: decimal.NewFromInt(100), ValueDate: time.Now(), BookingDate: time.Now(),
+			Side: domain.TransactionSideCredit, SourceMode: domain.SourceModeBatch,
+			IngestionIdempotencyKey: uuid.NewString(), Status: domain.TransactionStatusUnmatched,
+			RawPayload: []byte(sensitiveNarrative),
+		})
+		return err
+	})
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Raw bytes, no pgp_sym_decrypt - must NOT contain the plaintext.
+	var rawBytes []byte
+	if err := db.Pool.QueryRow(ctx, `SELECT raw_payload FROM transactions WHERE id = $1`, created.ID).Scan(&rawBytes); err != nil {
+		t.Fatalf("raw bytes query failed: %v", err)
+	}
+	if bytes.Contains(rawBytes, []byte("4111111111111111")) {
+		t.Error("raw_payload's raw bytes contain the plaintext card number - it is not encrypted at rest")
+	}
+	if bytes.Contains(rawBytes, []byte("Jane Doe")) {
+		t.Error("raw_payload's raw bytes contain the plaintext counterparty name - it is not encrypted at rest")
+	}
+
+	// TransactionRepo.GetByID DOES decrypt - must recover the original.
+	var got domain.Transaction
+	err = postgres.WithTx(tenantCtx, appPool, tenantID, func(ctx context.Context) error {
+		var err error
+		got, err = txRepo.GetByID(ctx, tenantID, created.ID)
+		return err
+	})
+	if err != nil {
+		t.Fatalf("GetByID failed: %v", err)
+	}
+	if string(got.RawPayload) != sensitiveNarrative {
+		t.Errorf("GetByID did not recover the original raw_payload: got %q, want %q", got.RawPayload, sensitiveNarrative)
 	}
 }
 

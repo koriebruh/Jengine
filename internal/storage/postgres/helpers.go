@@ -19,20 +19,6 @@ func nullableTime(t time.Time) any {
 	return t
 }
 
-// jsonOrEmptyObject returns b, or a literal "{}" if b is empty. Used when
-// building rows for bulkInsertChunked: unlike the single-row INSERT
-// statements elsewhere in this package, bulkInsertChunked's generated SQL
-// has no per-column COALESCE (it doesn't know which columns are
-// NOT NULL jsonb with a default) - so a NOT NULL jsonb column's default
-// must already be resolved in Go before the row reaches it, or Postgres
-// rejects a literal NULL.
-func jsonOrEmptyObject(b []byte) []byte {
-	if len(b) == 0 {
-		return []byte("{}")
-	}
-	return b
-}
-
 // bulkInsertChunked inserts rows into table using multi-row
 // INSERT ... VALUES (...), (...), ..., chunked to stay under Postgres'
 // 65535-parameter-per-statement limit.

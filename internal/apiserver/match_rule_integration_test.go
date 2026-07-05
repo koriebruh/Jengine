@@ -2,6 +2,7 @@ package apiserver_test
 
 import (
 	"context"
+	"net"
 	"testing"
 	"time"
 
@@ -11,10 +12,28 @@ import (
 	jenginev1 "github.com/koriebruh/Jengine/gen/go/jengine/v1"
 	"github.com/koriebruh/Jengine/internal/apiserver"
 	"github.com/koriebruh/Jengine/internal/matching/rules"
+	"github.com/koriebruh/Jengine/internal/platform/authz"
 	"github.com/koriebruh/Jengine/internal/storage/postgres"
 	"github.com/koriebruh/Jengine/internal/tenancy"
 	"github.com/koriebruh/Jengine/internal/testutil"
 )
+
+const localOPAURL = "http://localhost:8181"
+
+// requireLocalOPA skips unless the real OPA sidecar (docker-compose's
+// `opa` service, deploy/opa/policies/ mounted) is reachable - these
+// tests exercise ActivateRule's REAL maker != checker enforcement via
+// OPA (plans/task/core/23), not a synthetic always-allow fake, since a
+// fake risks silently drifting from deploy/opa/policies/authz.rego's
+// actual behavior.
+func requireLocalOPA(t *testing.T) {
+	t.Helper()
+	conn, err := net.DialTimeout("tcp", "localhost:8181", 2*time.Second)
+	if err != nil {
+		t.Skipf("local OPA not reachable at %s (run `docker compose up -d opa`): %v", localOPAURL, err)
+	}
+	_ = conn.Close()
+}
 
 const testRuleYAML = `
 rule:
@@ -42,6 +61,7 @@ func TestMatchRuleService_CreateActivateGet(t *testing.T) {
 	if testing.Short() {
 		t.Skip("requires Docker - skipped under -short; run make test-integration")
 	}
+	requireLocalOPA(t)
 
 	db := testutil.StartPostgres(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -54,8 +74,11 @@ func TestMatchRuleService_CreateActivateGet(t *testing.T) {
 	h := &apiserver.MatchRuleServiceHandler{
 		Pool: appPool, Rules: postgres.NewMatchRuleRepo(), Registry: rules.DefaultRegistry(),
 		Idempotency: apiserver.NewPostgresIdempotencyStore(appPool),
+		Authz:       authz.NewMiddleware(authz.NewHTTPOPAClient(localOPAURL)),
 	}
-	tenantCtx := tenancy.WithTenant(ctx, tenancy.TenantContext{TenantID: tenantID})
+	tenantCtx := tenancy.WithTenant(ctx, tenancy.TenantContext{
+		TenantID: tenantID, UserID: "activating-admin", Roles: []string{"tenant_admin"},
+	})
 
 	createReq := connect.NewRequest(&jenginev1.CreateDraftRuleRequest{
 		RuleSpecYaml: testRuleYAML, SourceAccountId: accountA.String(), TargetAccountId: accountB.String(),
@@ -99,6 +122,7 @@ func TestMatchRuleService_ActivateRule_SameApproverAsCreatorRejected(t *testing.
 	if testing.Short() {
 		t.Skip("requires Docker - skipped under -short; run make test-integration")
 	}
+	requireLocalOPA(t)
 
 	db := testutil.StartPostgres(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -111,8 +135,16 @@ func TestMatchRuleService_ActivateRule_SameApproverAsCreatorRejected(t *testing.
 	h := &apiserver.MatchRuleServiceHandler{
 		Pool: appPool, Rules: postgres.NewMatchRuleRepo(), Registry: rules.DefaultRegistry(),
 		Idempotency: apiserver.NewPostgresIdempotencyStore(appPool),
+		Authz:       authz.NewMiddleware(authz.NewHTTPOPAClient(localOPAURL)),
 	}
-	tenantCtx := tenancy.WithTenant(ctx, tenancy.TenantContext{TenantID: tenantID})
+	// "api" is the actor performing the activation attempt below (same
+	// user as created_by, which the handler hardcodes to "api" at MVP -
+	// see match_rule_service.go) - the maker != checker check must key
+	// off THIS authenticated identity, not the client-supplied
+	// approved_by request field.
+	tenantCtx := tenancy.WithTenant(ctx, tenancy.TenantContext{
+		TenantID: tenantID, UserID: "api", Roles: []string{"tenant_admin"},
+	})
 
 	createReq := connect.NewRequest(&jenginev1.CreateDraftRuleRequest{
 		RuleSpecYaml: testRuleYAML, SourceAccountId: accountA.String(), TargetAccountId: accountB.String(),
